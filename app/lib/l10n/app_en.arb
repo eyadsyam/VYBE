@@ -108,4 +108,90 @@
   },
   "freshnessOfflineStale": "Offline — showing saved data",
   "@freshnessOfflineStale": { "description": "11.2 Expired tier banner" }
+,
+
+  "stateLoading": "Loading",
+  "@stateLoading": { "description": "Semantic label for a first-load skeleton (3.2). Screen readers need something to announce; sighted users see the skeleton." },
+  "stateRefreshing": "Refreshing",
+  "@stateRefreshing": { "description": "3.2 refresh state: existing content stays visible and this is the subtle indicator's semantic label." },
+
+  "stateEmptyTitle": "Nothing here yet",
+  "@stateEmptyTitle": { "description": "Generic empty-state heading for a surface with no domain-specific copy of its own." },
+  "stateEmptyBody": "When there is something to show, it will appear here.",
+  "@stateEmptyBody": { "description": "Generic empty-state explanation, one sentence per 3.2." },
+
+  "errorRetryableTitle": "That did not work",
+  "@errorRetryableTitle": { "description": "Heading of a retryable error (3.2). The cause follows in plain language." },
+  "errorTerminalTitle": "We cannot complete this",
+  "@errorTerminalTitle": { "description": "Heading of a terminal error (3.2): what happened, what to do, support path." },
+  "errorSupportAction": "Contact support",
+  "@errorSupportAction": { "description": "The support path 3.2 requires on a terminal error." },
+  "errorNetworkBody": "We could not reach VYBE. Check your connection, then try again.",
+  "@errorNetworkBody": { "description": "Transport failure on a device that believes it is online: timeout, DNS, TLS." },
+  "errorServerBody": "VYBE had a problem on its side. Nothing you did caused this.",
+  "@errorServerBody": { "description": "5xx. Says whose fault it is, because blaming the user for a server fault is the default failure of generic error copy." },
+  "errorUnexpectedBody": "Something unexpected happened, and we have recorded it.",
+  "@errorUnexpectedBody": { "description": "UnexpectedFailure. Honest that it was not anticipated rather than pretending it was." },
+  "errorValidationBody": "Check the highlighted fields, then try again.",
+  "@errorValidationBody": { "description": "Field-level validation summary; each field carries its own message." },
+  "errorConflictStaleWrite": "Someone changed this before you did. Reload to see the current version.",
+  "@errorConflictStaleWrite": { "description": "11.4 stale write. The user is told what to do, not just that it failed." },
+  "errorConflictInvalidState": "This is no longer possible in the room's current state.",
+  "@errorConflictInvalidState": { "description": "FR-15 illegal state transition, rejected server-side with 409." },
+  "errorTraceId": "Reference: {traceId}",
+  "@errorTraceId": {
+    "description": "14.2. Shown on terminal errors so a user report can be joined to the server trace.",
+    "placeholders": { "traceId": { "type": "String" } }
+  },
+  "errorOfflineBody": "You are seeing saved data. Anything that needs the network will wait.",
+  "@errorOfflineBody": { "description": "3.2 offline state. Paired with a freshness indicator so nothing stale reads as live (11.2)." },
+
+  "authRequiredTitle": "Sign in to continue",
+  "@authRequiredTitle": { "description": "3.2 unauthorised state. No silent redirect: explain, then offer sign-in." },
+  "authRequiredBody": "This part of VYBE is only available to signed-in accounts.",
+  "@authRequiredBody": { "description": "The explanation that must precede the sign-in offer." },
+  "authSignInAction": "Sign in",
+  "@authSignInAction": { "description": "Primary action of the unauthorised state." },
+  "authForbiddenTitle": "You do not have access",
+  "@authForbiddenTitle": { "description": "Signed in but not permitted. Kept distinct from authRequiredTitle: offering sign-in to someone already signed in is nonsense." },
+  "authForbiddenBody": "Your account is signed in, but it is not allowed to open this.",
+  "@authForbiddenBody": { "description": "FR-14: possession of a join code grants nothing; the server decides." },
+
+  "notFoundTitle": "We could not find that",
+  "@notFoundTitle": { "description": "3.2 not-found state, its own screen rather than a generic error." },
+  "notFoundBody": "The link may be wrong, or what it pointed to is gone.",
+  "@notFoundBody": { "description": "Covers a mistyped join code and a deleted resource without guessing which." },
+  "actionGoHome": "Go to Home",
+  "@actionGoHome": { "description": "Escape hatch offered by the not-found and terminal-error states." },
+
+  "errorRateLimitedTitle": "Too many attempts",
+  "@errorRateLimitedTitle": { "description": "12.3 heading. The body carries the real wait." },
+  "errorRateLimitedReady": "You can try again now.",
+  "@errorRateLimitedReady": { "description": "Shown once the Retry-After window has elapsed, replacing the countdown." },
+
+  "roomEndedBody": "It cannot be reopened. Start a new room to keep watching together.",
+  "@roomEndedBody": { "description": "Pairs with roomEndedTitle. 3.2 requires a dedicated screen for this, not a generic error." },
+  "roomFullBody": "This room already has as many people as it can hold.",
+  "@roomFullBody": { "description": "FR-16 participant cap, enforced server-side against the caller's entitlement." },
+
+  "agoJustNow": "just now",
+  "@agoJustNow": { "description": "11.2 freshness age, under a minute old. Substituted into freshnessUpdatedAgo." },
+  "agoMinutes": "{count, plural, =1{1 minute ago} other{{count} minutes ago}}",
+  "@agoMinutes": {
+    "description": "11.2 freshness age in minutes. Substituted into freshnessUpdatedAgo.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "agoHours": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "@agoHours": {
+    "description": "11.2 freshness age in hours. AC-32's 'updated 2h ago'.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "agoDays": "{count, plural, =1{1 day ago} other{{count} days ago}}",
+  "@agoDays": {
+    "description": "11.2 freshness age in days.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "deepLinkOpening": "Opening…",
+  "@deepLinkOpening": { "description": "FR-13. Shown while the server authorises a join code; the client never assumes the link grants access." }
 }

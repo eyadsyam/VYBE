@@ -44,4 +44,46 @@
 
   "freshnessUpdatedAgo": "آخر تحديث {ago}",
   "freshnessOfflineStale": "غير متصل — تُعرض بيانات محفوظة"
+,
+
+  "stateLoading": "جارٍ التحميل",
+  "stateRefreshing": "جارٍ التحديث",
+
+  "stateEmptyTitle": "لا يوجد شيء هنا بعد",
+  "stateEmptyBody": "عندما يتوفر ما يمكن عرضه سيظهر هنا.",
+
+  "errorRetryableTitle": "لم تنجح العملية",
+  "errorTerminalTitle": "لا يمكننا إتمام هذا",
+  "errorSupportAction": "تواصل مع الدعم",
+  "errorNetworkBody": "تعذّر الوصول إلى VYBE، تحقق من اتصالك ثم أعد المحاولة.",
+  "errorServerBody": "حدثت مشكلة لدى VYBE، وما فعلته ليس سببًا فيها.",
+  "errorUnexpectedBody": "حدث خطأ غير متوقع، وقد سجّلناه.",
+  "errorValidationBody": "راجع الحقول المميّزة ثم أعد المحاولة.",
+  "errorConflictStaleWrite": "غيّر شخص آخر هذا قبلك، أعد التحميل لعرض النسخة الحالية.",
+  "errorConflictInvalidState": "لم يعد هذا ممكنًا في الحالة الحالية للغرفة.",
+  "errorTraceId": "المرجع: {traceId}",
+  "errorOfflineBody": "تُعرض لك بيانات محفوظة، وكل ما يحتاج إلى الشبكة سينتظر.",
+
+  "authRequiredTitle": "سجّل الدخول للمتابعة",
+  "authRequiredBody": "هذا الجزء من VYBE متاح للحسابات المسجَّلة فقط.",
+  "authSignInAction": "تسجيل الدخول",
+  "authForbiddenTitle": "لا تملك صلاحية الوصول",
+  "authForbiddenBody": "حسابك مسجَّل الدخول، لكنه لا يملك صلاحية فتح هذا.",
+
+  "notFoundTitle": "تعذّر العثور على ذلك",
+  "notFoundBody": "قد يكون الرابط خاطئًا، أو أن ما يشير إليه لم يعد موجودًا.",
+  "actionGoHome": "العودة إلى الرئيسية",
+
+  "errorRateLimitedTitle": "محاولات كثيرة",
+  "errorRateLimitedReady": "يمكنك المحاولة الآن.",
+
+  "roomEndedBody": "لا يمكن إعادة فتحها، أنشئ غرفة جديدة لمواصلة المشاهدة معًا.",
+  "roomFullBody": "وصلت هذه الغرفة إلى الحد الأقصى من الأشخاص.",
+
+  "agoJustNow": "الآن",
+  "agoMinutes": "{count, plural, zero{منذ لحظات} one{قبل دقيقة} two{قبل دقيقتين} few{قبل {count} دقائق} many{قبل {count} دقيقة} other{قبل {count} دقيقة}}",
+  "agoHours": "{count, plural, zero{منذ لحظات} one{قبل ساعة} two{قبل ساعتين} few{قبل {count} ساعات} many{قبل {count} ساعة} other{قبل {count} ساعة}}",
+  "agoDays": "{count, plural, zero{اليوم} one{قبل يوم} two{قبل يومين} few{قبل {count} أيام} many{قبل {count} يومًا} other{قبل {count} يوم}}",
+
+  "deepLinkOpening": "جارٍ الفتح…"
 }
