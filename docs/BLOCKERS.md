@@ -9,7 +9,7 @@ not when it is worked around.
 
 | # | Blocks | Severity | Owner | Status |
 |---|---|---|---|---|
-| [BLOCKER-01](#blocker-01) | M0 — provider probe run against the real API | High | Operator | Open |
+| [BLOCKER-01](#blocker-01) | M0 — provider probe run against the real API | High | Operator | ✅ **Resolved 2026-08-25** |
 | [BLOCKER-02](#blocker-02) | M0 — schema v1 migrated + seed working | High | Operator | Open |
 | [BLOCKER-03](#blocker-03) | M1 — vertical slice on two physical devices | Medium | Operator | Open |
 | [BLOCKER-04](#blocker-04) | Pre-launch — trademark clearance | High | Operator | Open |
@@ -18,35 +18,33 @@ not when it is worked around.
 
 ## BLOCKER-01
 
-**No TMDB API key, so no provider probe has run.**
+✅ **RESOLVED 2026-08-25.** A free TMDB Developer key was issued to the operator's
+account, stored in `.env` (gitignored, verified), and `cd server && go run
+./cmd/probe tmdb` ran against the live API: **10/10 calls answered**. Observed
+shapes are transcribed in `docs/INTEGRATIONS.md`.
 
-**Blocks:** M0 exit criterion *"provider integration probe run against the real
-API"*. Also blocks `go run ./cmd/seed --full`, and therefore the 200-title
-catalogue that §16.3 requires and that the §10.4 ranking harness needs to
-produce a meaningful number.
+**What the probe actually found** — recorded here because two results change
+engineering plans rather than merely unblocking them:
 
-**Why it is not worked around.** §0.3 rule 1 forbids inventing third-party API
-behaviour. `cmd/probe` deliberately has no offline mode and `cmd/seed --full`
-deliberately refuses: a canned fixture or 200 invented titles would let the
-catalogue adapter be written against a schema nobody has observed, and the
-ranker's nDCG@10 would then be computed against fiction and quoted as evidence.
+- **Arabic works.** Named Ramadan musalsalat are present with Arabic-script
+  titles (`الاختيار`, `ما وراء الطبيعة`, `لعبة نيوتن`, the `رامز` franchise).
+  The §1.4 wedge is not built on sand.
+- **But Arabic synopses are largely missing** — empty `overview` on **23 % of
+  Arabic TV and 80 % of Arabic film** (sample: 60 most popular of each). TMDB
+  does **not** fall back to English; it returns `""`. So ADR-012's curated-fields
+  path is promoted from a supporting feature to the primary pipeline for Arabic
+  film synopsis, with a real editorial cost that §1.4 must budget for.
+- **TMDB exposes no rate-limit headers at all** — no `X-RateLimit-*`, no
+  `Retry-After`, on any call. Our limiter therefore cannot be adaptive and must
+  be a conservative static value (§2.4 R3).
 
-`docs/INTEGRATIONS.md` therefore records **zero** TMDB response shapes.
+**Still open, and tracked elsewhere:** TMDB's *terms* remain unread — see
+`docs/LEGAL.md` **L2**. Probing an API establishes how it behaves, not what you
+are permitted to do with it, and that still needs a human.
 
-**Resolution:**
-1. Get a free key: <https://www.themoviedb.org/settings/api>
-2. Put `TMDB_API_KEY=...` in `.env` (gitignored).
-3. `cd server && go run ./cmd/probe tmdb`
-4. Transcribe the observed shapes from `tools/probe/out/tmdb.json` into
-   `docs/INTEGRATIONS.md`.
-5. Read TMDB's current terms — see `docs/LEGAL.md` L2, which is the same
-   dependency from the legal side.
-
-**Note.** The probe deliberately includes three Arabic-script queries. TMDB's
-MENA coverage is the single biggest unknown behind the §1.4 launch wedge, and
-the probe is designed to answer it with evidence rather than optimism. If
-coverage turns out to be poor, that is a **product finding**, and it should
-change the plan rather than be quietly absorbed.
+**Also note:** `cmd/seed --full` and the §10.4 ranking harness are now
+*unblocked* but **not yet run**. The 200-title catalogue §16.3 requires depends
+additionally on BLOCKER-02 (no live Postgres), so it stays undone.
 
 ---
 
@@ -141,4 +139,6 @@ Link domain. A rename is hours, not days. It is deliberately not scattered.
 
 ## Resolved
 
-*(none yet)*
+| # | What unblocked it | Date | Evidence |
+|---|---|---|---|
+| [BLOCKER-01](#blocker-01) | Free TMDB Developer key issued; probe run against the live API | 2026-08-25 | 10/10 calls answered; shapes in [INTEGRATIONS.md](INTEGRATIONS.md) |

@@ -41,7 +41,7 @@ node_modules/
 Thumbs.db
 
 # ---- Local artefacts ----
-tools/probe/out/
+**/tools/probe/out/
 docs/INTEGRATIONS.generated.md
 
 # Flutter coverage output
