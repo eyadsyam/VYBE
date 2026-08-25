@@ -11,16 +11,18 @@ than an hour of rereading.
 VYBE synchronises a **clock**, not a stream (ADR-002) — you cannot sync
 playback of a service you do not control, so the room runs a server-authoritative
 virtual timeline and every timed feature fires against it. **M0 foundations are
-built and verified**; the Go and Dart domain logic that carries the hard claims
-is at 100% coverage. **M0 is not complete**: two of its exit criteria are blocked
-on things only the operator can do (a reboot and an API key). No M1 code has been
-written yet.
+built and verified.** **M1 domain logic has begun**: the HTTP edge, identity,
+rooms, and the client's error/network/state layers are written and heavily
+tested — but **nothing is wired together yet**. There are no handlers, no
+repositories, no screens. M0 still has one exit criterion blocked on the
+operator (a reboot, for Docker), and the vertical slice needs a second physical
+device.
 
 ---
 
 ## Current state
 
-**Repo:** https://github.com/eyadsyam/VYBE (private) · branch `main` · 9 commits
+**Repo:** https://github.com/eyadsyam/VYBE (private) · branch `main`
 
 ### Verified, with evidence
 
@@ -31,12 +33,17 @@ written yet.
 | UUIDv7 generator | 83.9%, incl. clock-step and counter-rollover cases |
 | Config load + secret redaction | 88.0% |
 | Migration loader, checksum guard, table-ownership check | all pass |
-| Flutter core (error model, `Result`, sync clock) | **28/28**, 92.7% line coverage |
+| Flutter core (error model, `Result`, sync clock) | 92.7% line coverage |
+| Flutter app total | **91/91 tests**; hand-written code **96.3%** (445/462 lines) |
 | Static analysis | `go vet` · `gofmt` · `flutter analyze` all clean |
 | Spec traceability | 64 FR · 20 NFR · 35 AC — all trace |
 | l10n en + ar | `untranslated.json` empty |
 | HTTP edge — problems, cursors, idempotency (FR-57–59) | `go test` — **98.8%** coverage |
 | TMDB provider behaviour | probe run live, 10/10 calls; shapes in [INTEGRATIONS.md](INTEGRATIONS.md) |
+| Identity — JWT, refresh rotation, WS tickets (FR-1–5) | `go test` — **95.3%** coverage |
+| Rooms — state machine, join codes, capacity, succession (FR-11–18) | `go test` — **98.6%** coverage |
+| Client problem mapping + single-flight refresh | 100% / 97.8%; single-flight verified by removing the lock and watching the test fail |
+| §3.2 state widgets | tested in en + ar RTL at 100% and 200% scale |
 
 ### Built but unverified
 
@@ -48,8 +55,18 @@ either way.
 
 ### Not started
 
-M1 entirely: no V1 screens, no API endpoints beyond `/healthz` and `/readyz`,
-no WebSocket hub, no golden tests, no OpenAPI spec.
+Still absent, and not claimed:
+
+- **No HTTP handlers.** The identity and rooms *domain logic* exists and is
+  tested; nothing mounts it. `/healthz` and `/readyz` remain the only routes.
+- **No repositories.** Every module is pure domain plus an interface. Nothing
+  talks to Postgres yet, so nothing has been exercised against real SQL.
+- **No WebSocket hub** (FR-28–42), **no OpenAPI spec** (§5.2), **no V1 screens**,
+  **no Drift storage layer**, **no router**, **no golden tests**.
+- **`go test -race` has never run on this machine** — cgo needs a C compiler
+  that is not installed. CI on ubuntu is what actually covers it. See
+  [ENVIRONMENT.md](ENVIRONMENT.md).
+- **CI has never run.** Every coverage figure above is from a local run.
 
 ---
 
@@ -73,6 +90,7 @@ These cannot be closed by engineering. Full detail in
    path, and a scheduler, so they cannot demonstrate Companion Sync — AC-1's
    ±250ms convergence assertion is meaningless when both read the same
    `DateTime.now()`.
+
 *(The force push that was pending here is done — see "Authorship" below.)*
 
 ---
@@ -141,22 +159,23 @@ Parallelisable into two independent tracks — they touch disjoint directories.
 
 ### Track A — backend (`server/` only)
 
-1. `internal/platform/httpx` — RFC 9457 problem details, cursor pagination,
-   `Idempotency-Key` middleware (FR-57–59)
-2. `internal/modules/identity` — Ed25519 JWT, rotating refresh with reuse
-   detection, WS tickets (FR-1–6, ADR-011)
-3. `internal/modules/rooms` — state machine, Crockford join codes, participant
-   cap (FR-11–18)
-4. `internal/modules/realtime` — WebSocket hub, `seq` allocator, resync
+1. ✅ `internal/platform/httpx` — RFC 9457, cursor pagination, `Idempotency-Key`
+2. ✅ `internal/modules/identity` — Ed25519 JWT, rotating refresh, WS tickets
+3. ✅ `internal/modules/rooms` — state machine, join codes, capacity, succession
+4. **Repositories + handlers.** Everything above is pure domain behind an
+   interface; nothing is mounted. This is now the critical path — the domain
+   rules are meaningless until a request can reach them. Needs Postgres, so it
+   is gated on BLOCKER-02.
+5. `internal/modules/realtime` — WebSocket hub, `seq` allocator, resync
    delta/snapshot, per-recipient fan-out filtering (FR-28–42)
-5. `api/openapi.yaml` — the contract; client models generate from it (§5.2)
+6. `api/openapi.yaml` — the contract; client models generate from it (§5.2)
 
 ### Track B — app (`app/` only)
 
-1. `core/ui/` — design system components and the §3.2 state widgets (loading /
-   empty / error / offline / unauthorised / not-found / rate-limited)
-2. `core/network/` — Dio client, auth interceptor with single-flight refresh,
-   RFC 9457 → `Failure` mapping
+1. ✅ `core/ui/states/` — the §3.2 state widgets and the FR-60 freshness banner
+2. ✅ `core/network/` — RFC 9457 → `Failure`, auth interceptor with single-flight
+   refresh. **Not yet done:** the Dio client factory itself (base options,
+   timeouts, trace-id header, retry policy)
 3. `core/storage/` — Drift schema, cache tiers, freshness (§11.1–11.2)
 4. `app/router` — go_router with deep-link resolution (FR-13)
 5. `features/rooms/` — the room screen against a fake data source until Track A
