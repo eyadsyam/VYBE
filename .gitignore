@@ -43,3 +43,6 @@ Thumbs.db
 # ---- Local artefacts ----
 tools/probe/out/
 docs/INTEGRATIONS.generated.md
+
+# Flutter coverage output
+app/coverage/

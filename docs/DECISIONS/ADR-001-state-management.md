@@ -86,3 +86,47 @@ toggle, a text field's obscure flag) that never leave the widget.
 **Revisit when**
 - A leak test demonstrates `autoDispose` is not firing for the room graph, or
 - Riverpod's generator becomes a build-time bottleneck (>60s incremental).
+
+---
+
+## Amendment, 2026-08-25 — code generation dropped; the decision stands
+
+**Observed, not assumed.** On resolving dependencies at the versions current
+today, `riverpod_generator` >= 4.0.6 requires `analyzer` ^13.0.0, while
+`drift_dev` 2.34 caps `analyzer` at 12.x. There is no version pair that
+satisfies both. The full resolver output is in the commit that introduced
+`app/pubspec.yaml`.
+
+Given a forced choice between the two generators:
+
+- **`drift_dev` is kept.** It generates the entire typed DAO and query layer;
+  hand-writing it would be thousands of lines of exactly the mapping code that
+  §4.1 wants generated.
+- **`riverpod_generator` is dropped.** Providers are written by hand as
+  `NotifierProvider` / `StreamProvider` / `Provider` declarations.
+
+**Why this does not weaken the decision.** Re-reading the scoring table above,
+the generator was contributing convenience, not any of the deciding properties:
+
+| Property that decided ADR-001 | Still true without codegen? |
+|---|---|
+| `autoDispose` ties socket/timer lifetime to listeners | **Yes** — it is a provider modifier, not a generator feature |
+| Compile-time DI safety | **Yes** — a hand-declared `final fooProvider = ...` is still a typed reference; a missing dependency is still a compile error |
+| `ProviderContainer(overrides:)` testability | **Yes** — unchanged |
+| `AsyncValue` sealed loading/data/error | **Yes** — a runtime type, not generated |
+| Boilerplate per feature | **Slightly worse** — roughly three extra lines per provider |
+
+Only the last row moves, and it moves the smallest-weighted criterion (15%) by a
+small amount. Re-scored, Riverpod drops from 8.65 to about 8.50 and still wins
+comfortably.
+
+**`freezed` is also dropped**, for the same analyzer conflict. §4.1 asks for
+"sealed classes / `freezed` unions" — Dart 3.12 has native `sealed` classes with
+exhaustive `switch` pattern matching, which satisfies the requirement directly.
+The cost is hand-written `==`, `hashCode`, and `copyWith` on state classes; the
+benefit is one less generator on the critical path.
+
+**Revisit when** `drift_dev` gains analyzer 13 support, at which point
+`riverpod_generator` can be reintroduced without changing any provider's
+semantics — the hand-written declarations and the generated ones produce the
+same provider types.
