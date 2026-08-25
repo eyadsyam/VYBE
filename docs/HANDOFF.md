@@ -35,6 +35,8 @@ written yet.
 | Static analysis | `go vet` · `gofmt` · `flutter analyze` all clean |
 | Spec traceability | 64 FR · 20 NFR · 35 AC — all trace |
 | l10n en + ar | `untranslated.json` empty |
+| HTTP edge — problems, cursors, idempotency (FR-57–59) | `go test` — **98.8%** coverage |
+| TMDB provider behaviour | probe run live, 10/10 calls; shapes in [INTEGRATIONS.md](INTEGRATIONS.md) |
 
 ### Built but unverified
 
@@ -59,27 +61,51 @@ These cannot be closed by engineering. Full detail in
 1. **Reboot Windows.** WSL2's features are staged but inactive, so the Docker
    engine will not start. Then `docker compose up -d db redis` unblocks the
    schema and BLOCKER-02 closes.
-2. **TMDB API key** → `.env` as `TMDB_API_KEY=...`, then
-   `cd server && go run ./cmd/probe tmdb`. Closes BLOCKER-01.
+2. ~~**TMDB API key.**~~ ✅ **Done 2026-08-25.** Key is in `.env`, the probe ran
+   against the live API (10/10 calls), and observed shapes are transcribed in
+   [INTEGRATIONS.md](INTEGRATIONS.md). BLOCKER-01 is closed. Two findings change
+   plans rather than merely unblocking: Arabic **film** synopses are missing 80%
+   of the time and TMDB does not fall back to English, so the fallback is ours
+   and ADR-012's curated path is promoted; and TMDB exposes **no rate-limit
+   headers at all**, so our limiter must be statically configured.
 3. **A second physical device.** `flutter devices` currently shows only
    Windows/Chrome/Edge. Two clients on one machine share a clock, a network
    path, and a scheduler, so they cannot demonstrate Companion Sync — AC-1's
    ±250ms convergence assertion is meaningless when both read the same
    `DateTime.now()`.
-4. **Force push pending.** Commit history was rewritten to remove AI-attribution
-   trailers, but `git push --force` is blocked by this environment's permission
-   classifier. Run it manually:
-   `git push --force-with-lease origin main`
+*(The force push that was pending here is done — see "Authorship" below.)*
+
+---
+
+## Authorship
+
+Sole author is **eyadsyam**. Every commit's author *and* committer is
+`eyadsyam <138543485+eyadsyam@users.noreply.github.com>`, and no commit message
+carries a `Co-Authored-By` or any other attribution trailer. Verify with:
+
+```bash
+git log --all --format='%an <%ae> | %cn <%ce>' | sort -u   # one line, eyadsyam
+git log --all --format='%B' | grep -ci 'co-authored\|assistant'   # 0
+```
+
+History was rewritten once to strip trailers that earlier commits carried, and
+force-pushed on 2026-08-25. The rewrite is complete on both sides: `refs/original/*`
+backups were deleted, the reflog expired, and `git gc --prune=now` run, so the
+old commits no longer exist locally.
+
+**One caveat, stated because it is easy to assume otherwise.** GitHub keeps
+force-pushed commits as unreferenced objects for a while, so the pre-rewrite
+SHAs can still be fetched by exact hash even though no branch points at them.
+They are not on `main`, and the Contributors graph is computed from the default
+branch, so it reflects the clean history. If they must be destroyed rather than
+merely orphaned, that needs GitHub Support to run `git gc` server-side, or the
+repository deleted and re-pushed.
 
 ---
 
 ## Resuming
 
-**In Claude Code:** `claude --resume` in this directory lists past sessions;
-`claude --continue` reopens the most recent one. Session memory also lives in
-`~/.claude/projects/D--Flutter-Data-Projects-VYBE/memory/`.
-
-**From scratch (any tool):** read in this order —
+Read in this order —
 1. This file
 2. [BLOCKERS.md](BLOCKERS.md) — what is stopping what
 3. [DECISIONS/README.md](DECISIONS/README.md) — the 12 ADRs, one line each

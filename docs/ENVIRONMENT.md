@@ -95,13 +95,40 @@ claims otherwise.
 its tests, the Flutter core and its tests, static analysis on both, and all
 documentation.
 
-## No TMDB API key present
+## TMDB API key — resolved
 
-`TMDB_API_KEY` is unset. Per Master Prompt v2 §0.3 rule 1, `docs/INTEGRATIONS.md`
-records **no provider response shapes** until the probe has run against the live
-API. Tracked as BLOCKER-01. A free key is available from
-<https://www.themoviedb.org/settings/api>; put it in `.env` and run
-`go run ./cmd/probe tmdb`.
+`TMDB_API_KEY` is present in `.env` (gitignored) and the probe has run against
+the live API. BLOCKER-01 is closed and `docs/INTEGRATIONS.md` records the
+observed shapes. Re-run any time with:
+
+```bash
+cd server && go run ./cmd/probe tmdb
+```
+
+## `go test -race` does not run on this machine
+
+The race detector requires cgo, and cgo requires a C compiler:
+
+```
+go: -race requires cgo; enable cgo by setting CGO_ENABLED=1
+cgo: C compiler "gcc" not found: exec: "gcc": executable file not found in %PATH%
+```
+
+**Consequence, stated plainly.** Local `go test` runs are **not race-checked**.
+The concurrency this project actually depends on — the idempotency reservation
+serialising two simultaneous retries, and later the WebSocket hub's fan-out —
+is therefore verified locally only for behaviour, not for data races.
+
+**What covers it.** CI runs on `ubuntu-latest`, where cgo and gcc are present,
+so `go test ./... -race` executes there on every push. A race introduced locally
+is caught at the gate rather than never. To close the gap on this machine,
+install a C toolchain (MSYS2/mingw-w64 or TDM-GCC) and put `gcc` on `PATH`.
+
+Until then, run the local suite without the flag:
+
+```bash
+cd server && go test ./... -cover
+```
 
 ## Note on an unrelated key found in the shell environment
 
