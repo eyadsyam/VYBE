@@ -1,0 +1,45 @@
+# ---- Secrets: never commit ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!**/testdata/*.key
+
+# ---- Flutter / Dart ----
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.packages
+app/pubspec.lock
+app/ios/Pods/
+app/ios/.symlinks/
+app/android/.gradle/
+app/android/local.properties
+app/android/key.properties
+app/**/*.g.dart
+app/**/*.freezed.dart
+app/**/*.mocks.dart
+app/lib/l10n/generated/
+**/failures/
+
+# ---- Go ----
+server/bin/
+server/tmp/
+*.exe
+*.test
+coverage.out
+coverage.html
+
+# ---- Tooling ----
+node_modules/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# ---- Local artefacts ----
+tools/probe/out/
+docs/INTEGRATIONS.generated.md
