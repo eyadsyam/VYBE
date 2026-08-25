@@ -30,10 +30,10 @@ var Nil UUID
 // that: within one millisecond the counter increments, so ordering is total
 // rather than merely probable.
 type generator struct {
-	mu      sync.Mutex
-	lastMS  int64
-	counter uint16 // 12 bits used; 4096 IDs per millisecond before rollover
-	now     func() time.Time
+	mu       sync.Mutex
+	lastMS   int64
+	counter  uint16 // 12 bits used; 4096 IDs per millisecond before rollover
+	now      func() time.Time
 	randRead func([]byte) (int, error)
 }
 

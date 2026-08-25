@@ -1,0 +1,47 @@
+{
+  "@@locale": "ar",
+
+  "appTitle": "VYBE",
+
+  "navHome": "الرئيسية",
+  "navDiscover": "استكشف",
+  "navRooms": "الغرف",
+  "navActivity": "النشاط",
+  "navProfile": "الملف الشخصي",
+
+  "syncPrepareTitle": "استعد",
+  "syncPrepareInstruction": "افتح تطبيق المشاهدة واختر الحلقة، ولا تضغط تشغيل بعد.",
+  "syncCountdownPlay": "شغّل",
+  "syncCountdownSeconds": "{count, plural, zero{ثانية} one{ثانية واحدة} two{ثانيتان} few{{count} ثوانٍ} many{{count} ثانية} other{{count} ثانية}}",
+
+  "syncOutOfSyncButton": "لست متزامنًا",
+  "syncNudgeBehind": "أنا متأخر",
+  "syncNudgeAhead": "أنا متقدم",
+  "syncRequestReanchor": "اطلب من المضيف إعادة المزامنة للجميع",
+  "syncDegraded": "اتصالك غير مستقر بما يكفي لضبط التوقيت، وقد أُوقفت الأحداث المؤقتة.",
+  "syncNotMeasured": "جارٍ مزامنة الساعات…",
+
+  "roomParticipants": "{count, plural, zero{لا أحد هنا بعد} one{شخص واحد يشاهد} two{شخصان يشاهدان} few{{count} أشخاص يشاهدون} many{{count} شخصًا يشاهدون} other{{count} يشاهدون}}",
+  "roomShareInvite": "شارك الدعوة",
+  "roomEndedTitle": "انتهت هذه الغرفة",
+  "roomFullTitle": "هذه الغرفة ممتلئة",
+  "roomInviteExpired": "لم تعد هذه الدعوة صالحة",
+
+  "triviaSubmitted": "تم تسجيل إجابتك",
+  "triviaCorrect": "إجابة صحيحة",
+  "triviaIncorrect": "إجابة خاطئة",
+  "triviaPointsAwarded": "+{points} نقطة",
+
+  "stateEmptyRoomsTitle": "لا توجد غرف بعد",
+  "stateEmptyRoomsBody": "أنشئ غرفة وادعُ صديقًا، فالمشاهدة معًا هي الفكرة كلها.",
+  "stateEmptyRoomsAction": "أنشئ غرفة",
+
+  "errorRetry": "أعد المحاولة",
+  "errorOffline": "أنت غير متصل",
+  "errorRequiresConnection": "يتطلب هذا الإجراء اتصالًا بالإنترنت، ولا يمكن حفظه لوقت لاحق.",
+  "errorRateLimited": "محاولات كثيرة، أعد المحاولة بعد {seconds} ثانية.",
+  "errorSessionRevoked": "تم تسجيل خروجك لأن جلستك استُخدمت من مكان غير متوقع، يرجى تسجيل الدخول مجددًا.",
+
+  "freshnessUpdatedAgo": "آخر تحديث {ago}",
+  "freshnessOfflineStale": "غير متصل — تُعرض بيانات محفوظة"
+}

@@ -1,0 +1,384 @@
+name: CI
+
+# Master Prompt v2 §14.1: analyze -> unit -> widget -> golden -> integration ->
+# build -> security scan.
+#
+# The gates in §13.3 are enforced here or they are not enforced at all. Any job
+# below that is allowed to fail without failing the build is not a gate, it is
+# a suggestion — so nothing here uses continue-on-error.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.26"
+  FLUTTER_VERSION: "3.44.4"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  server-static:
+    name: server · static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: server/go.sum
+
+      - name: go.mod is tidy
+        working-directory: server
+        run: |
+          go mod tidy
+          # An untidy go.mod means the committed dependency set does not match
+          # what the code imports, which makes builds non-reproducible.
+          git diff --exit-code go.mod go.sum
+
+      - name: gofmt
+        working-directory: server
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::gofmt would change these files:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: go vet
+        working-directory: server
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: server
+          args: --timeout=5m
+
+      - name: build every command
+        working-directory: server
+        run: go build ./...
+
+  # ---------------------------------------------------------------------------
+  server-test:
+    name: server · tests + coverage gates
+    runs-on: ubuntu-latest
+
+    # Real Postgres and Redis, not fakes. §13.1 requires repository tests to
+    # exercise cache arbitration and error translation, and a fake would agree
+    # with whatever we assumed.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: vybe
+          POSTGRES_PASSWORD: vybe
+          POSTGRES_DB: vybe
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U vybe"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      VYBE_DB_DSN: postgres://vybe:vybe@localhost:5432/vybe?sslmode=disable
+      VYBE_REDIS_ADDR: localhost:6379
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: server/go.sum
+
+      - name: create extensions
+        run: |
+          PGPASSWORD=vybe psql -h localhost -U vybe -d vybe \
+            -f infra/postgres/init/001-extensions.sql
+
+      # This is the step that would have caught an unverified schema. It proves
+      # the migrations execute, that vybe_normalize()'s Arabic regex compiles,
+      # and that uuid_generate_v7() produces a valid v7 UUID.
+      - name: migrations apply
+        working-directory: server
+        run: go run ./cmd/migrate up
+
+      - name: migrations are reversible
+        working-directory: server
+        run: |
+          # §5.4 requires reversibility, and an untested down script is a
+          # rollback that fails at the worst moment. Walk all the way down and
+          # back up again.
+          for _ in $(seq 1 8); do go run ./cmd/migrate down; done
+          go run ./cmd/migrate up
+          go run ./cmd/migrate status
+
+      - name: Arabic search normalisation behaves as ADR-006 claims
+        run: |
+          # Executable form of the claim that a query for احمد finds أحمد.
+          # If index-time and query-time normalisation ever diverge, Arabic
+          # search silently returns nothing and no English test notices.
+          PGPASSWORD=vybe psql -h localhost -U vybe -d vybe -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE a text; b text;
+          BEGIN
+            SELECT vybe_normalize('أحمد')  INTO a;
+            SELECT vybe_normalize('احمد')  INTO b;
+            IF a IS DISTINCT FROM b THEN
+              RAISE EXCEPTION 'hamza normalisation failed: % vs %', a, b;
+            END IF;
+
+            IF vybe_normalize('مدرسة') <> vybe_normalize('مدرسه') THEN
+              RAISE EXCEPTION 'ta marbuta normalisation failed';
+            END IF;
+
+            IF vybe_normalize('مصطفى') <> vybe_normalize('مصطفي') THEN
+              RAISE EXCEPTION 'alif maqsura normalisation failed';
+            END IF;
+
+            IF vybe_normalize('مُحَمَّد') <> vybe_normalize('محمد') THEN
+              RAISE EXCEPTION 'tashkeel stripping failed';
+            END IF;
+
+            IF vybe_normalize('Pokémon') <> 'pokemon' THEN
+              RAISE EXCEPTION 'latin unaccent failed: %', vybe_normalize('Pokémon');
+            END IF;
+
+            IF vybe_normalize(NULL) IS NOT NULL THEN
+              RAISE EXCEPTION 'NULL must normalise to NULL';
+            END IF;
+          END $$;
+
+          -- uuid_generate_v7 must actually produce version 7.
+          DO $$
+          DECLARE u uuid;
+          BEGIN
+            SELECT uuid_generate_v7() INTO u;
+            IF substring(u::text, 15, 1) <> '7' THEN
+              RAISE EXCEPTION 'uuid_generate_v7 produced version %, expected 7 (%)',
+                substring(u::text, 15, 1), u;
+            END IF;
+          END $$;
+          SQL
+
+      - name: unit + integration tests
+        working-directory: server
+        run: go test ./... -race -count=1 -coverprofile=coverage.out -covermode=atomic
+
+      # §13.1: "Overall coverage is a weak signal. The gate that matters is
+      # domain-layer coverage — that is where the thinking lives."
+      - name: domain coverage gate (>= 90%)
+        working-directory: server
+        run: |
+          go tool cover -func=coverage.out > /tmp/cov.txt
+          fail=0
+          for pkg in modules/games modules/realtime; do
+            pct=$(grep "internal/$pkg/" /tmp/cov.txt \
+              | grep -v "^total:" \
+              | awk '{gsub("%","",$NF); s+=$NF; n++} END {if(n>0) printf "%.1f", s/n; else print "0"}')
+            echo "$pkg: ${pct}%"
+            awk -v p="$pct" 'BEGIN{ exit !(p+0 >= 90) }' || {
+              echo "::error::domain package $pkg is at ${pct}%, gate is 90% (§13.1)"
+              fail=1
+            }
+          done
+          exit $fail
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: server-coverage
+          path: server/coverage.out
+
+  # ---------------------------------------------------------------------------
+  app-static:
+    name: app · analyze + format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: pub get
+        working-directory: app
+        run: flutter pub get
+
+      - name: format
+        working-directory: app
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      # §13.3: "flutter analyze / linter: zero warnings (warnings are errors)".
+      - name: analyze
+        working-directory: app
+        run: flutter analyze --fatal-infos --fatal-warnings
+
+      # §3.6: "CI fails on a literal string in a widget file".
+      # Run from the repo root: these are standalone scripts with no package
+      # dependencies, and invoking them inside app/ would pointlessly trigger
+      # the app's native-asset build hooks.
+      - name: no hardcoded user-facing strings
+        run: dart tools/lint/no_literal_strings.dart app/lib
+
+      # §4.2 (feature isolation) and §4.1 (domain layer imports no Flutter,
+      # Dio, or Drift). Both rules live in one tool because both are answered
+      # by reading the same import lines.
+      - name: feature boundaries + domain purity
+        run: dart tools/lint/feature_boundaries.dart app/lib
+
+  # ---------------------------------------------------------------------------
+  app-test:
+    name: app · tests + coverage gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - working-directory: app
+        run: flutter pub get
+
+      - name: unit + widget tests
+        working-directory: app
+        run: flutter test --coverage --reporter expanded
+
+      # §13.1 golden gate: every V1 screen in en LTR and ar RTL, light and
+      # dark, at 100% and 200% text scale. A layout regression in RTL fails the
+      # build (§3.6) — this is what stops Arabic from silently rotting.
+      - name: golden tests (en LTR + ar RTL)
+        working-directory: app
+        run: |
+          if [ -d test/golden ]; then
+            flutter test test/golden --reporter expanded
+          else
+            echo "::notice::no golden tests yet — they land with the first V1 screen (M1)"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: golden-failures
+          path: app/test/golden/failures/
+
+  # ---------------------------------------------------------------------------
+  spec-traceability:
+    name: spec · traceability
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Every FR needs at least one AC, and every AC must reference an FR/NFR.
+      # An orphaned AC means either a requirement is missing or the criterion
+      # is unnecessary; both are defects in the spec.
+      - name: traceability
+        run: python tools/spec/check_traceability.py specs/001-vertical-slice/spec.md
+
+  # ---------------------------------------------------------------------------
+  security:
+    name: security · secrets + dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: server/go.sum
+
+      - name: govulncheck
+        working-directory: server
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      # §12.5 / NFR-19: no secret may reach the client binary. The client
+      # proxies every provider call through the backend precisely so that no
+      # key needs to exist here.
+      - name: no provider keys in the Flutter source
+        run: |
+          if grep -rInE "(TMDB_API_KEY|api_key\s*[:=]\s*['\"][A-Za-z0-9]{16,})" app/lib app/android app/ios 2>/dev/null; then
+            echo "::error::a provider key appears in client source; §12.5 forbids it"
+            exit 1
+          fi
+          echo "clean"
+
+  # ---------------------------------------------------------------------------
+  build:
+    name: build · android + server image
+    runs-on: ubuntu-latest
+    needs: [server-static, app-static]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: build android (split ABI, obfuscated)
+        working-directory: app
+        run: |
+          flutter pub get
+          # §12.5 requires obfuscation on release builds; --split-debug-info
+          # keeps the symbols for crash reporting without shipping them.
+          flutter build apk --release --split-per-abi \
+            --obfuscate --split-debug-info=build/symbols
+
+      # NFR: app size < 30MB per ABI (§4.5).
+      - name: app size budget
+        working-directory: app
+        run: |
+          limit=$((30 * 1024 * 1024))
+          fail=0
+          for apk in build/app/outputs/flutter-apk/*-release.apk; do
+            size=$(stat -c%s "$apk")
+            printf '%s: %s bytes\n' "$(basename "$apk")" "$size"
+            if [ "$size" -gt "$limit" ]; then
+              echo "::error::$(basename "$apk") exceeds the 30MB budget (§4.5)"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: server/go.sum
+
+      - name: server image builds
+        run: docker build -t vybe-api:ci ./server

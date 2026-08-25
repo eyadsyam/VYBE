@@ -1,0 +1,17 @@
+# flutter gen-l10n configuration.
+#
+# §3.6 makes Arabic a launch requirement, not a phase-20 nice-to-have, so the
+# l10n pipeline exists from M0 rather than being retrofitted. Retrofitting
+# localisation is how you discover, three weeks before launch, that half the
+# strings were never translatable in the first place.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: L10n
+output-dir: lib/l10n/generated
+nullable-getter: false
+
+# A key present in app_en.arb but missing from app_ar.arb means the user sees
+# English inside an otherwise-Arabic screen. Writing the gaps to a file makes
+# them reviewable rather than invisible.
+untranslated-messages-file: lib/l10n/untranslated.json

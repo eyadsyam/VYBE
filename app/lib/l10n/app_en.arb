@@ -1,0 +1,111 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "VYBE",
+  "@appTitle": {
+    "description": "Application name. A brand name, so it is not translated."
+  },
+
+  "navHome": "Home",
+  "@navHome": { "description": "Bottom navigation: Home tab (IA in 3.1)" },
+  "navDiscover": "Discover",
+  "@navDiscover": { "description": "Bottom navigation: Discover tab" },
+  "navRooms": "Rooms",
+  "@navRooms": { "description": "Bottom navigation: Rooms tab. Sits centre and is visually emphasised because it is the product." },
+  "navActivity": "Activity",
+  "@navActivity": { "description": "Bottom navigation: Activity tab" },
+  "navProfile": "Profile",
+  "@navProfile": { "description": "Bottom navigation: Profile tab" },
+
+  "syncPrepareTitle": "Get ready",
+  "@syncPrepareTitle": { "description": "Heading of the sync ritual preparation step (3.3)" },
+  "syncPrepareInstruction": "Open your streaming app and queue the episode. Do not press play yet.",
+  "@syncPrepareInstruction": {
+    "description": "The core instruction of Companion Sync. VYBE cannot see the user's player, so this sentence IS the contract (ADR-002). Translations must not imply VYBE controls playback."
+  },
+  "syncCountdownPlay": "PLAY",
+  "@syncCountdownPlay": { "description": "Shown at zero, when everyone presses play simultaneously" },
+  "syncCountdownSeconds": "{count, plural, =1{1 second} other{{count} seconds}}",
+  "@syncCountdownSeconds": {
+    "description": "Countdown announcement. Also read by screen readers at 10s, 5s and 0 (NFR-18).",
+    "placeholders": { "count": { "type": "int" } }
+  },
+
+  "syncOutOfSyncButton": "I am out of sync",
+  "@syncOutOfSyncButton": { "description": "Opens the drift correction sheet (FR-25)" },
+  "syncNudgeBehind": "I am behind",
+  "@syncNudgeBehind": { "description": "Nudges only this user's local offset back 5s. Affects nobody else." },
+  "syncNudgeAhead": "I am ahead",
+  "@syncNudgeAhead": { "description": "Nudges only this user's local offset forward 5s. Affects nobody else." },
+  "syncRequestReanchor": "Ask the host to resync everyone",
+  "@syncRequestReanchor": { "description": "Requests a TIMELINE_REANCHOR, which does move the whole room (FR-26)" },
+  "syncDegraded": "Your connection is too unstable to keep time. Timed events are paused.",
+  "@syncDegraded": {
+    "description": "Shown when every clock sample exceeds the RTT ceiling (FR-24, EC-13). Timed events are suppressed rather than fired at an unknown offset."
+  },
+  "syncNotMeasured": "Syncing clocks…",
+  "@syncNotMeasured": { "description": "Before the first usable PING/PONG sample. Deliberately distinct from degraded." },
+
+  "roomParticipants": "{count, plural, =0{No one here yet} =1{1 watching} other{{count} watching}}",
+  "@roomParticipants": {
+    "description": "Participant count in the room mini-bar",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "roomShareInvite": "Share invite",
+  "@roomShareInvite": { "description": "Copies the https://vybe.app/r/{code} universal link (FR-13)" },
+  "roomEndedTitle": "This room has ended",
+  "@roomEndedTitle": {
+    "description": "A dedicated screen, not a generic error. 3.2 requires this to be its own state."
+  },
+  "roomFullTitle": "This room is full",
+  "@roomFullTitle": { "description": "Free tier caps at 4 participants (FR-16)" },
+  "roomInviteExpired": "This invite is no longer valid",
+  "@roomInviteExpired": { "description": "Dedicated screen per 3.2" },
+
+  "triviaSubmitted": "Answer locked in",
+  "@triviaSubmitted": {
+    "description": "Shown after submitting. Deliberately does NOT say correct or incorrect: the answer key does not reach the device until QUESTION_CLOSE (ADR-004, FR-51)."
+  },
+  "triviaCorrect": "Correct",
+  "@triviaCorrect": { "description": "Always paired with an icon and this text, never colour alone (3.5)" },
+  "triviaIncorrect": "Incorrect",
+  "@triviaIncorrect": { "description": "Always paired with an icon and this text, never colour alone (3.5)" },
+  "triviaPointsAwarded": "+{points} XP",
+  "@triviaPointsAwarded": {
+    "description": "Points earned for a question",
+    "placeholders": { "points": { "type": "int" } }
+  },
+
+  "stateEmptyRoomsTitle": "No rooms yet",
+  "@stateEmptyRoomsTitle": { "description": "Empty state heading. 3.2 requires illustration + one sentence + one primary action." },
+  "stateEmptyRoomsBody": "Start a room and invite a friend — watching together is the whole point.",
+  "@stateEmptyRoomsBody": { "description": "Empty state explanation, one sentence" },
+  "stateEmptyRoomsAction": "Create a room",
+  "@stateEmptyRoomsAction": { "description": "The single primary action of the empty state" },
+
+  "errorRetry": "Try again",
+  "@errorRetry": { "description": "Retry action on a retryable error (3.2)" },
+  "errorOffline": "You are offline",
+  "@errorOffline": { "description": "Offline banner heading" },
+  "errorRequiresConnection": "This needs a connection. It cannot be saved for later.",
+  "@errorRequiresConnection": {
+    "description": "FR-64. Shown for chat, reactions, trivia answers and room joins. Never an optimistic success: Global Master Prompt 53 forbids the silent fallback."
+  },
+  "errorRateLimited": "Too many attempts. Try again in {seconds} seconds.",
+  "@errorRateLimited": {
+    "description": "3.2 requires the actual wait, not 'try again later'",
+    "placeholders": { "seconds": { "type": "int" } }
+  },
+  "errorSessionRevoked": "You have been signed out because your session was used from somewhere unexpected. Please sign in again.",
+  "@errorSessionRevoked": {
+    "description": "ADR-011 refresh-token reuse detection (EC-8). 3.2 forbids a silent redirect, so the user is told why."
+  },
+
+  "freshnessUpdatedAgo": "Updated {ago}",
+  "@freshnessUpdatedAgo": {
+    "description": "11.2 freshness indicator. Stale data must never be presented as live.",
+    "placeholders": { "ago": { "type": "String" } }
+  },
+  "freshnessOfflineStale": "Offline — showing saved data",
+  "@freshnessOfflineStale": { "description": "11.2 Expired tier banner" }
+}

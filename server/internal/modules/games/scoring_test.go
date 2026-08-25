@@ -49,10 +49,10 @@ func validSubmission() Submission {
 
 func TestValidate_AntiCheatSuite(t *testing.T) {
 	cases := []struct {
-		name    string
-		ac      string
-		mutate  func(*Submission, *Context)
-		want    RejectReason
+		name     string
+		ac       string
+		mutate   func(*Submission, *Context)
+		want     RejectReason
 		wantHTTP int
 	}{
 		{

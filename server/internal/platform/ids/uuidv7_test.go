@@ -195,13 +195,13 @@ func TestParse_RoundTrip(t *testing.T) {
 // the database and defeat a unique constraint. Each of these must be rejected.
 func TestParse_RejectsNonCanonicalForms(t *testing.T) {
 	cases := map[string]string{
-		"no hyphens":     "0192f1e4c8d97a3b8f2e1d0c9b8a7654",
-		"braces":         "{0192f1e4-c8d9-7a3b-8f2e-1d0c9b8a7654}",
-		"urn prefix":     "urn:uuid:0192f1e4-c8d9-7a3b-8f2e-1d0c9b8a7654",
-		"too short":      "0192f1e4-c8d9-7a3b-8f2e-1d0c9b8a765",
-		"too long":       "0192f1e4-c8d9-7a3b-8f2e-1d0c9b8a76543",
-		"non-hex":        "0192f1e4-c8d9-7a3b-8f2e-1d0c9b8a765z",
-		"empty":          "",
+		"no hyphens":       "0192f1e4c8d97a3b8f2e1d0c9b8a7654",
+		"braces":           "{0192f1e4-c8d9-7a3b-8f2e-1d0c9b8a7654}",
+		"urn prefix":       "urn:uuid:0192f1e4-c8d9-7a3b-8f2e-1d0c9b8a7654",
+		"too short":        "0192f1e4-c8d9-7a3b-8f2e-1d0c9b8a765",
+		"too long":         "0192f1e4-c8d9-7a3b-8f2e-1d0c9b8a76543",
+		"non-hex":          "0192f1e4-c8d9-7a3b-8f2e-1d0c9b8a765z",
+		"empty":            "",
 		"hyphen misplaced": "0192f1e4c-8d9-7a3b-8f2e-1d0c9b8a7654",
 	}
 	for name, in := range cases {

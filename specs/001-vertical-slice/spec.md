@@ -150,6 +150,10 @@ are the reason AC-20 through AC-27 are non-negotiable.
 | **FR-60** | Every screen backed by data MUST implement every applicable state in §3.2, including a freshness indicator on cached content. Stale data MUST NOT be presented as live. |
 | **FR-61** | All user-facing strings MUST come from `.arb` files. A literal string in a widget file MUST fail CI lint (§3.6). |
 | **FR-62** | Every layout MUST use directional properties (`EdgeInsetsDirectional`, `start`/`end`). `left`/`right` MUST fail review. |
+| **FR-63** | Trivia answer submission MUST be rate-limited to a ceiling of 30/min per user in addition to the per-question uniqueness constraint. Exceeding it MUST return `429` with `Retry-After` and MUST flag the session for review. It MUST NOT auto-ban (§8.4, §12.3). |
+| **FR-64** | An action that cannot be meaningfully queued offline — room join, chat message, reaction, trivia answer, prediction — MUST report that it requires a connection. It MUST NOT show optimistic success and MUST NOT be added to the outbox (§11.3). |
+
+> **FR-63 and FR-64 were added after the first traceability run.** `tools/spec/check_traceability.py` reported AC-23 and AC-33 as orphaned — both cited a master-prompt section but no requirement. That is the gate working as intended: an acceptance criterion with nothing to trace back to means the requirement was never written down, only assumed.
 
 ---
 
@@ -337,7 +341,7 @@ Then B receives the authoritative state, reconciles, shows the correct `t_room` 
 
 **AC-22** *(FR-47)* Given a user who is not a participant in the room, When they submit an answer, Then it is rejected `403`.
 
-**AC-23** *(§12.3)* Given a client submitting 50 requests per second, When the rate limit is evaluated, Then requests are rejected `429` with `Retry-After` after the threshold and the session is flagged for review — **not auto-banned** (§8.4).
+**AC-23** *(FR-63, §12.3)* Given a client submitting 50 requests per second, When the rate limit is evaluated, Then requests are rejected `429` with `Retry-After` after the threshold and the session is flagged for review — **not auto-banned** (§8.4).
 
 ### Scoring and XP
 
@@ -363,7 +367,7 @@ Then B receives the authoritative state, reconciles, shows the correct `t_room` 
 
 **AC-32** *(FR-60)* Given cached content older than its TTL, When the screen renders, Then a visible age indicator is shown ("updated 2h ago") and the data is not presented as live.
 
-**AC-33** *(§11.3)* Given the device is offline, When the user attempts to send a chat message, Then the UI states that the action requires a connection. It MUST NOT show an optimistic success.
+**AC-33** *(FR-64, §11.3)* Given the device is offline, When the user attempts to send a chat message, Then the UI states that the action requires a connection. It MUST NOT show an optimistic success.
 
 **AC-34** *(FR-61, NFR-17)* Given locale `ar`, When every V1 screen renders, Then the golden test matches, layout is RTL, directional icons are mirrored, and no text is clipped at 200% scale.
 
@@ -549,5 +553,5 @@ with no AC fails the build.
 | FR-43 – FR-51 (trivia, anti-cheat) | AC-14 – AC-25 |
 | FR-52 – FR-56 (XP) | AC-26, AC-27 |
 | FR-41, FR-42, FR-14, FR-2 (authz, safety) | AC-28 – AC-31 |
-| FR-60 – FR-62 (offline, i18n, a11y) | AC-32 – AC-35 |
+| FR-60 – FR-64 (offline, i18n, a11y, limits) | AC-23, AC-32 – AC-35 |
 | FR-1 – FR-18, FR-36 – FR-40, FR-57 – FR-59 | Covered by API integration suite; see `docs/TESTING.md` |
