@@ -42,6 +42,7 @@ device.
 | TMDB provider behaviour | probe run live, 10/10 calls; shapes in [INTEGRATIONS.md](INTEGRATIONS.md) |
 | Identity — JWT, refresh rotation, WS tickets (FR-1–5) | `go test` — **95.3%** coverage |
 | Rooms — state machine, join codes, capacity, succession (FR-11–18) | `go test` — **98.6%** coverage |
+| Event log, resync decision, dedupe LRU (FR-28–35) | `go test` — **100%**; AC-7/8/9/11/12 asserted literally |
 | Client problem mapping + single-flight refresh | 100% / 97.8%; single-flight verified by removing the lock and watching the test fail |
 | §3.2 state widgets | tested in en + ar RTL at 100% and 200% scale |
 
@@ -166,8 +167,9 @@ Parallelisable into two independent tracks — they touch disjoint directories.
    interface; nothing is mounted. This is now the critical path — the domain
    rules are meaningless until a request can reach them. Needs Postgres, so it
    is gated on BLOCKER-02.
-5. `internal/modules/realtime` — WebSocket hub, `seq` allocator, resync
-   delta/snapshot, per-recipient fan-out filtering (FR-28–42)
+5. `internal/modules/realtime` — ✅ `seq` allocator, resync delta/snapshot and
+   dedupe are done as domain logic. **Still to do:** the WebSocket hub itself,
+   per-recipient fan-out filtering (FR-41), presence (FR-39–40)
 6. `api/openapi.yaml` — the contract; client models generate from it (§5.2)
 
 ### Track B — app (`app/` only)
