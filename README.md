@@ -182,6 +182,7 @@ If you have fifteen minutes and want to see whether this is real:
 | [BLOCKERS.md](docs/BLOCKERS.md) | Live register of what is stopping which exit criterion |
 | [INTEGRATIONS.md](docs/INTEGRATIONS.md) | Observed provider behaviour (currently: none, deliberately) |
 | [ENVIRONMENT.md](docs/ENVIRONMENT.md) | Verified toolchain, and the two workarounds in use |
+| [HANDOFF.md](docs/HANDOFF.md) | **Start here when resuming** — current state, blockers, next work in dependency order |
 
 ---
 
