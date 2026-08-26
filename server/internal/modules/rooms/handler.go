@@ -54,7 +54,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Post("/", h.create)
 	r.Get("/", h.list)
 	r.Post("/join", h.join)
-	r.Route("/{roomID}", func(r chi.Router) {
+	r.Route("/{roomId}", func(r chi.Router) {
 		r.Get("/", h.get)
 		r.Post("/leave", h.leave)
 		r.Post("/end", h.end)
@@ -244,7 +244,7 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	room, participants, err := h.svc.Get(r.Context(), chi.URLParam(r, "roomID"), userID)
+	room, participants, err := h.svc.Get(r.Context(), chi.URLParam(r, "roomId"), userID)
 	if err != nil {
 		httpx.WriteProblem(w, r, roomProblem(err))
 		return
@@ -259,7 +259,7 @@ func (h *Handler) leave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := h.svc.Leave(r.Context(), chi.URLParam(r, "roomID"), userID)
+	m, err := h.svc.Leave(r.Context(), chi.URLParam(r, "roomId"), userID)
 	if err != nil {
 		httpx.WriteProblem(w, r, roomProblem(err))
 		return
@@ -279,7 +279,7 @@ func (h *Handler) end(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := h.svc.End(r.Context(), chi.URLParam(r, "roomID"), userID)
+	m, err := h.svc.End(r.Context(), chi.URLParam(r, "roomId"), userID)
 	if err != nil {
 		httpx.WriteProblem(w, r, roomProblem(err))
 		return
@@ -312,7 +312,7 @@ func (h *Handler) transition(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := h.svc.Transition(r.Context(), chi.URLParam(r, "roomID"), userID, ev)
+	m, err := h.svc.Transition(r.Context(), chi.URLParam(r, "roomId"), userID, ev)
 	if err != nil {
 		httpx.WriteProblem(w, r, roomProblem(err))
 		return

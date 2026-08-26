@@ -1,0 +1,1108 @@
+openapi: 3.1.0
+
+# The v1 contract (§5.2).
+#
+# This file is written by hand and kept in step with the handlers deliberately,
+# rather than generated from them. A generated spec documents whatever the code
+# happens to do, including its accidents; a hand-written one is a statement of
+# what the code is SUPPOSED to do, and the difference between the two is where
+# the bugs are. The e2e test in cmd/api/router_test.go is what actually holds
+# them together.
+#
+# Every non-2xx response in this file is application/problem+json (RFC 9457,
+# FR-58). There is exactly one error shape in the whole API, and clients branch
+# on `code` — never on `status`, because five different situations share 409.
+
+info:
+  title: VYBE API
+  version: "1.0.0"
+  summary: The multiplayer layer over any streaming service.
+  description: |
+    VYBE synchronises a server-authoritative **clock**, not a stream (ADR-002).
+    You cannot sync playback of a service you do not control, so a room runs a
+    virtual timeline and every timed feature fires against it:
+
+        t_room = (server_now − anchor) + offset
+
+    Three conventions apply everywhere and are not repeated per-endpoint:
+
+    * **Errors** are `application/problem+json` with a stable `code` and a
+      `traceId`. Branch on `code`.
+    * **Pagination** is opaque cursors, never offsets. Sending `?offset=`,
+      `?page=`, or `?skip=` is refused with `OFFSET_PAGINATION_UNSUPPORTED`
+      rather than ignored.
+    * **Mutations** require an `Idempotency-Key`. A retry with the same key
+      replays the first response and carries `Idempotent-Replay: true`.
+  license:
+    name: Proprietary
+  contact:
+    name: eyadsyam
+
+servers:
+  - url: http://localhost:8080
+    description: local development
+  - url: https://api.vybe.app
+    description: production
+
+tags:
+  - name: auth
+    description: Registration, sessions, and tokens (FR-1–FR-6).
+  - name: rooms
+    description: Watch parties (FR-11–FR-20).
+  - name: realtime
+    description: The WebSocket tier (FR-28–FR-42).
+  - name: ops
+    description: Liveness and readiness.
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ---------------------------------------------------------------------------
+  # Auth
+  # ---------------------------------------------------------------------------
+
+  /v1/auth/register:
+    post:
+      tags: [auth]
+      summary: Create an account
+      description: |
+        Creates an account and opens a session in one call, so a new user is
+        never asked to log in immediately after signing up.
+
+        Unlike login, this endpoint DOES distinguish `EMAIL_TAKEN` from
+        `HANDLE_TAKEN`. That is a deliberate exception to the anti-enumeration
+        rule: a signup form cannot function without telling the user which
+        field to change, and a handle is public by definition. Rate limiting is
+        the mitigation, not a vague error that makes the form unusable.
+
+        Accounts under 13 are **refused** (§12.4), not created in a degraded
+        state — a restricted account still processes a child's data. Accounts
+        under 16 are created with `isDiscoverable: false`.
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201":
+          description: The account was created and a session opened.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "403":
+          description: Below the minimum age (§12.4).
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+              example:
+                type: https://vybe.app/problems/under-minimum-age
+                title: Below Minimum Age
+                status: 403
+                code: UNDER_MINIMUM_AGE
+                detail: You must be at least 13 to create an account.
+                traceId: 01H5exitzSg1J3dCy4NnS8jG
+        "409":
+          description: The email or handle is already in use.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+              examples:
+                emailTaken:
+                  value:
+                    type: https://vybe.app/problems/email-taken
+                    title: Email Registered
+                    status: 409
+                    code: EMAIL_TAKEN
+                    detail: That email is already registered.
+                    traceId: 01H5exitzSg1J3dCy4NnS8jG
+                    errors:
+                      - { field: email, code: TAKEN, detail: already registered }
+                handleTaken:
+                  value:
+                    type: https://vybe.app/problems/handle-taken
+                    title: Handle Taken
+                    status: 409
+                    code: HANDLE_TAKEN
+                    detail: That handle is already in use.
+                    traceId: 01H5exitzSg1J3dCy4NnS8jG
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+        "503":
+          description: |
+            The breached-password set is unavailable. The policy fails CLOSED:
+            a password that cannot be checked is not accepted.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  /v1/auth/login:
+    post:
+      tags: [auth]
+      summary: Open a session
+      description: |
+        **Every** failure returns one identical `401 INVALID_CREDENTIALS`, and
+        the server pays the same password-hashing cost whether or not the
+        account exists. Unknown email, wrong password, and malformed input are
+        indistinguishable by status, by code, by detail, and by response time.
+
+        A client must not try to infer account existence from this endpoint.
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200":
+          description: Authenticated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401":
+          description: The email or password is incorrect — or there is no such account.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+              example:
+                type: https://vybe.app/problems/invalid-credentials
+                title: Invalid Credentials
+                status: 401
+                code: INVALID_CREDENTIALS
+                detail: The email or password is incorrect.
+                traceId: 01H5exitzSg1J3dCy4NnS8jG
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+
+  /v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Exchange a refresh token
+      description: |
+        Rotating refresh tokens with reuse detection (ADR-011).
+
+        A successful rotation returns a NEW `refreshToken`; the old one is
+        dead. Within a **10-second overlap window** the previous token is
+        served again without rotating — that window absorbs a client retrying
+        an in-flight refresh whose response was lost, which would otherwise log
+        a user out every time their train entered a tunnel at the wrong moment.
+        On that path `refreshToken` is **absent**: the caller already holds a
+        usable one, and issuing a second would fork the family.
+
+        Presenting an already-rotated token AFTER the window revokes the entire
+        token family and its session. Either the token was stolen and the thief
+        is using it, or it was stolen and the legitimate client is; the server
+        cannot tell, so both re-authenticate.
+
+        Every failure — expired, unknown, revoked, reuse-detected — returns one
+        `REFRESH_REJECTED`. Distinguishing them would tell a token thief which
+        of their guesses was a real, already-rotated token.
+      operationId: refresh
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        "200":
+          description: |
+            A new access token. `refreshToken` is present on a rotation and
+            absent on an in-window replay.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Session" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401":
+          description: The token cannot be used. Discard both tokens and sign in again.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+              example:
+                type: https://vybe.app/problems/refresh-rejected
+                title: Refresh Rejected
+                status: 401
+                code: REFRESH_REJECTED
+                detail: This refresh token cannot be used. Sign in again.
+                traceId: 01H5exitzSg1J3dCy4NnS8jG
+
+  /v1/auth/logout:
+    post:
+      tags: [auth]
+      summary: End this session
+      description: |
+        Revokes the session AND its refresh-token family. The access token
+        remains cryptographically valid until it expires, but every
+        authenticated endpoint checks the session, so it stops working
+        immediately — otherwise "sign out" would leave a working credential for
+        up to 15 minutes.
+      operationId: logout
+      responses:
+        "204":
+          description: Signed out.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /v1/auth/me:
+    get:
+      tags: [auth]
+      summary: The authenticated user
+      operationId: getMe
+      responses:
+        "200":
+          description: The caller's profile.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401":
+          description: |
+            Not authenticated, the session was revoked, or the account no
+            longer exists. All three mean "discard the token"; a deleted
+            account is 401 rather than 404 because retrying will never help.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  /v1/auth/ws-ticket:
+    post:
+      tags: [auth, realtime]
+      summary: Mint a single-use WebSocket ticket
+      description: |
+        Returns a **single-use** ticket valid for **60 seconds**, to be passed
+        as `?ticket=` when opening the socket.
+
+        This exists because an access token must never appear in a URL: query
+        strings are written to server access logs, every proxy log in between,
+        and browser history — permanently, in plaintext, somewhere nobody is
+        watching. The `/v1/ws` endpoint refuses `access_token`, `token`, `jwt`,
+        `bearer`, and `authorization` query parameters outright.
+
+        A ticket does not survive redemption. Opening two sockets needs two
+        tickets.
+      operationId: createWsTicket
+      responses:
+        "201":
+          description: A ticket.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ticket, expiresAt, expiresInSeconds]
+                properties:
+                  ticket: { type: string }
+                  expiresAt: { type: string, format: date-time }
+                  expiresInSeconds:
+                    type: integer
+                    const: 60
+                    description: |
+                      Provided so the client need not do arithmetic against a
+                      server timestamp it cannot trust — its own clock may be
+                      minutes off, which is the premise of ADR-002.
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ---------------------------------------------------------------------------
+  # Rooms
+  # ---------------------------------------------------------------------------
+
+  /v1/rooms:
+    get:
+      tags: [rooms]
+      summary: Rooms the caller hosts or has joined
+      operationId: listRooms
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: |
+            Newest first. `items` is always an array, never null.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: "#/components/schemas/Room" }
+                  nextCursor:
+                    type: string
+                    description: Absent on the last page. Echo it back unmodified.
+        "400":
+          description: |
+            A malformed cursor (`CURSOR_INVALID`), a bad limit
+            (`LIMIT_INVALID`), or an attempt at offset pagination
+            (`OFFSET_PAGINATION_UNSUPPORTED`).
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+    post:
+      tags: [rooms]
+      summary: Open a room
+      description: |
+        Creates a room in `LOBBY` and returns its join code. Capacity comes
+        from the HOST's entitlement tier (4 free, 8 plus) and is a property of
+        the room from then on — a free-tier guest can join a plus host's room.
+      operationId: createRoom
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateRoomRequest" }
+      responses:
+        "201":
+          description: The room, including its join code and share URL.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Room" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409": { $ref: "#/components/responses/IdempotencyInFlight" }
+        "415": { $ref: "#/components/responses/UnsupportedMediaType" }
+        "422":
+          description: |
+            Validation failed, or `CONTENT_NOT_FOUND` — no such title in the
+            catalogue.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "503":
+          description: A join code could not be allocated. Retry.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  /v1/rooms/join:
+    post:
+      tags: [rooms]
+      summary: Join a room by code
+      description: |
+        Join codes are Crockford base32 and are decoded leniently, because a
+        code is read aloud over a call and typed by somebody else: case is
+        ignored, hyphens and spaces are stripped, and `I`/`l` decode to `1`
+        while `O`/`o` decode to `0`. `U` is **excluded** from the alphabet and
+        is rejected rather than mapped — unlike the others there is no digit it
+        is plausibly a misreading of, and silently mapping it would resolve to
+        a different room.
+
+        A malformed code and an unknown code both return `ROOM_NOT_FOUND`.
+        Distinguishing them would tell somebody enumerating codes that their
+        alphabet is right.
+      operationId: joinRoom
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [joinCode]
+              properties:
+                joinCode:
+                  type: string
+                  examples: ["K7X2QP", "k7x-2qp"]
+      responses:
+        "200":
+          description: Joined. The response includes the current participants.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Room" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: No such live room — or the code was malformed.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "409":
+          description: |
+            `ROOM_FULL`, `ALREADY_JOINED`, or `ROOM_ENDED`.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+
+  /v1/rooms/{roomId}:
+    parameters:
+      - $ref: "#/components/parameters/RoomId"
+    get:
+      tags: [rooms]
+      summary: Read a room
+      description: |
+        Membership is required. Possession of a join code is **not** access
+        (FR-14) — a code shared into a group chat months ago must not remain a
+        permanent key.
+
+        A non-member receives `404 ROOM_NOT_FOUND`, not 403. Telling a stranger
+        "that room exists but you are not in it" confirms the id, which is
+        exactly what somebody probing ids wants to learn.
+      operationId: getRoom
+      responses:
+        "200":
+          description: The room and its participants.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Room" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/RoomNotFound" }
+
+  /v1/rooms/{roomId}/leave:
+    parameters:
+      - $ref: "#/components/parameters/RoomId"
+    post:
+      tags: [rooms]
+      summary: Leave a room
+      description: |
+        If the HOST leaves, the longest-tenured connected participant is
+        promoted and a `HOST_CHANGED` event is emitted. If nobody is left, the
+        room ends immediately rather than waiting for the reaper — an empty
+        lobby that still resolves by join code is a room a straggler can walk
+        into alone.
+
+        The response omits `joinCode`: the caller is no longer a member.
+      operationId: leaveRoom
+      responses:
+        "200":
+          description: Left. The room as it now stands, without the join code.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Room" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: Not a participant.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "404": { $ref: "#/components/responses/RoomNotFound" }
+
+  /v1/rooms/{roomId}/end:
+    parameters:
+      - $ref: "#/components/parameters/RoomId"
+    post:
+      tags: [rooms]
+      summary: End a room
+      description: |
+        Host only. **Idempotent**: ending an already-ended room succeeds and
+        emits no second `ROOM_ENDED`, so a host double-tapping on a slow
+        connection does not see a failure for something that worked.
+      operationId: endRoom
+      responses:
+        "200":
+          description: Ended.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Room" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/NotTheHost" }
+        "404": { $ref: "#/components/responses/RoomNotFound" }
+
+  /v1/rooms/{roomId}/transition:
+    parameters:
+      - $ref: "#/components/parameters/RoomId"
+    post:
+      tags: [rooms]
+      summary: Drive the room state machine
+      description: |
+        Host only. The legal transitions (FR-15):
+
+            LOBBY   --ARM-->       READY
+            READY   --START-->     PLAYING
+            READY   --CANCEL-->    LOBBY
+            PLAYING --REANCHOR-->  READY
+            any     --END-->       ENDED
+
+        An illegal transition returns `409 ILLEGAL_TRANSITION` with `fromState`
+        and `attemptedEvent` as extension members, so a client can tell the
+        user what the room's state actually is rather than guessing.
+      operationId: transitionRoom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event]
+              properties:
+                event:
+                  type: string
+                  enum: [ARM, START, REANCHOR, CANCEL, END]
+      responses:
+        "200":
+          description: Transitioned.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Room" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/NotTheHost" }
+        "404": { $ref: "#/components/responses/RoomNotFound" }
+        "409":
+          description: Not available from the room's current state.
+          content:
+            application/problem+json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Problem"
+                  - type: object
+                    properties:
+                      fromState: { $ref: "#/components/schemas/RoomState" }
+                      attemptedEvent: { type: string }
+              example:
+                type: https://vybe.app/problems/illegal-transition
+                title: Illegal Transition
+                status: 409
+                code: ILLEGAL_TRANSITION
+                detail: Cannot START from LOBBY.
+                traceId: 01H5exitzSg1J3dCy4NnS8jG
+                fromState: LOBBY
+                attemptedEvent: START
+        "422": { $ref: "#/components/responses/ValidationFailed" }
+
+  # ---------------------------------------------------------------------------
+  # Realtime
+  # ---------------------------------------------------------------------------
+
+  /v1/ws:
+    get:
+      tags: [realtime]
+      summary: Open the room socket
+      description: |
+        Upgrades to WebSocket. Authenticated by a **ws-ticket only** — an
+        `Authorization` header is refused here, so there is exactly one
+        credential path to audit.
+
+        Every failure happens BEFORE the upgrade and arrives as an ordinary
+        `application/problem+json` response with a `traceId`. A client never
+        has to parse a close frame to learn it was unauthorised.
+
+        ### Frames
+
+        The socket carries newline-free JSON objects, each with a `type`.
+        Durable room events use the §7.2 envelope and carry a `seq`; control
+        frames do not, because they are not part of the room's history.
+
+        **Server → client**
+
+        | type | when |
+        |---|---|
+        | `HELLO` | immediately on connect, carrying `currentSeq` so a client knows whether it missed anything without asking |
+        | `EVENT` | a durable room event |
+        | `DELTA` | answer to `RESYNC` when the gap is small enough |
+        | `SNAPSHOT` | answer to `RESYNC` when it is not, or when the missed events have aged out of retention |
+        | `PONG` | answer to `PING` |
+        | `ERROR` | a protocol problem; the socket stays open |
+
+        **Client → server**
+
+        | type | payload |
+        |---|---|
+        | `PING` | `clientTime` (epoch ms) |
+        | `RESYNC` | `lastSeq` |
+
+        ### Clock sync (ADR-002)
+
+        `PONG` echoes the client's own `clientTime` back **unmodified**
+        alongside `serverTime`, so the client can compute
+        `offset = ((t1 − t0) + (t2 − t3)) / 2`. A pong carrying only the
+        server's time would let a client measure latency but not correct its
+        clock, which is the entire point.
+
+        ### Reconnection
+
+        Send `RESYNC` with your `lastSeq`. The server replies with a `DELTA`
+        when the gap is within the configured threshold AND the events still
+        exist, and a `SNAPSHOT` otherwise. Note those are two separate reasons:
+        a small gap whose events have been pruned cannot be served a delta at
+        any threshold.
+
+        ### Unknown frames
+
+        A frame type the server does not recognise is answered with `ERROR`,
+        not a disconnect — and a client must likewise ignore event types it
+        does not know (FR-33) rather than treating them as fatal. Tolerance
+        runs both ways so a server can ship a new event before every client
+        understands it.
+
+        ### Backpressure
+
+        A client that stops draining is disconnected with a close frame that
+        says so. This is safe, and expected: reconnect and `RESYNC`.
+      operationId: openSocket
+      security: []
+      parameters:
+        - name: room
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: ticket
+          in: query
+          required: true
+          description: A single-use ticket from `/v1/auth/ws-ticket`.
+          schema: { type: string }
+      responses:
+        "101":
+          description: Switching Protocols.
+        "400":
+          description: |
+            `ROOM_REQUIRED`, or `TOKEN_IN_QUERY` if an `access_token`, `token`,
+            `jwt`, `bearer`, or `authorization` query parameter was present, or
+            an `Authorization` header was sent.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "401":
+          description: |
+            `WS_TICKET_INVALID` — missing, expired, or already redeemed. The
+            three are indistinguishable by design.
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "404": { $ref: "#/components/responses/RoomNotFound" }
+
+  # ---------------------------------------------------------------------------
+  # Ops
+  # ---------------------------------------------------------------------------
+
+  /healthz:
+    get:
+      tags: [ops]
+      summary: Liveness
+      description: |
+        Deliberately does NOT touch the database. A liveness probe that fails
+        on a database blip gets the container killed and restarted, which does
+        not fix the database and does lose every WebSocket it was holding.
+      operationId: healthz
+      security: []
+      responses:
+        "200":
+          description: The process is alive.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: ok }
+
+  /readyz:
+    get:
+      tags: [ops]
+      summary: Readiness
+      description: |
+        Postgres is the source of truth: unreachable means **503**.
+
+        Redis holds only reconstructible state (ADR-009), so an unreachable
+        Redis is reported as degraded and readiness stays **200**. Failing here
+        would take every instance out of the load balancer and turn a cache
+        outage into a total one.
+      operationId: readyz
+      security: []
+      responses:
+        "200":
+          description: Ready, possibly degraded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+        "503":
+          description: Not ready — Postgres is unreachable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        An Ed25519-signed JWT, 15-minute lifetime. The scheme name is
+        case-insensitive per RFC 7235.
+
+        The token must be in the `Authorization` header. Passing it as
+        `?access_token=`, `?token=`, or `?jwt=` is refused with
+        `TOKEN_IN_QUERY` even when a valid header is also present.
+
+  parameters:
+    RoomId:
+      name: roomId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        8–255 printable ASCII characters, unique per logical operation
+        (FR-57). Keys are scoped to the caller, so two users may use the same
+        key without colliding.
+
+        A retry with the same key AND the same body replays the original
+        response with `Idempotent-Replay: true`. The same key with a
+        DIFFERENT body is a client bug and returns
+        `422 IDEMPOTENCY_KEY_REUSED` rather than silently replaying the wrong
+        response.
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 255
+
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: |
+        Opaque. Echo back the previous page's `nextCursor` unmodified; do not
+        construct one.
+      schema: { type: string }
+
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  responses:
+    BadRequest:
+      description: Malformed request.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+    Unauthorized:
+      description: |
+        Not authenticated. `TOKEN_EXPIRED` specifically means "refresh and
+        retry silently"; every other code here means "send the user to login".
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+    ValidationFailed:
+      description: |
+        One or more fields are invalid. `errors[]` names them. Those `detail`
+        strings are diagnostics for a developer reading logs, NOT display
+        copy — FR-61 requires user-facing text to come from the client's own
+        .arb files, so render from `code`.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+    UnsupportedMediaType:
+      description: The body must be `application/json`.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+    RateLimited:
+      description: Slow down. `retryAfterSeconds` says by how much.
+      content:
+        application/problem+json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Problem"
+              - type: object
+                properties:
+                  retryAfterSeconds: { type: integer }
+
+    IdempotencyInFlight:
+      description: |
+        A request with this key is still being processed. Retry shortly —
+        this is not a failure.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+    RoomNotFound:
+      description: |
+        No such room, **or** the caller is not a member of it. The two are
+        deliberately indistinguishable.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+    NotTheHost:
+      description: Only the host can do that.
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+    Problem:
+      type: object
+      description: RFC 9457. The only error shape in the API.
+      required: [type, title, status, code, traceId]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: A documentation anchor, not a dereferenceable endpoint.
+        title: { type: string, description: Human-readable. Free to be reworded; do not match on it. }
+        status: { type: integer }
+        detail: { type: string }
+        code:
+          type: string
+          description: |
+            **Branch on this.** Stable, SCREAMING_SNAKE_CASE, and part of the
+            contract — renaming one is a breaking change. `status` is too
+            coarse: five different situations share 409.
+        traceId:
+          type: string
+          description: |
+            Echoes the client's `X-Trace-Id` when supplied, so a user
+            reporting "it failed" can be joined to server logs by the id their
+            app already recorded (§14.2).
+        errors:
+          type: array
+          items: { $ref: "#/components/schemas/FieldError" }
+
+    FieldError:
+      type: object
+      required: [field, code, detail]
+      properties:
+        field: { type: string }
+        code: { type: string }
+        detail:
+          type: string
+          description: A developer diagnostic, not display copy. See ValidationFailed.
+
+    RegisterRequest:
+      type: object
+      required: [email, password, handle, dateOfBirth]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+        password:
+          type: string
+          minLength: 12
+          maxLength: 256
+          description: |
+            Checked against a breached-password set. Length is measured in
+            characters, and a long passphrase is not truncated.
+        handle:
+          type: string
+          minLength: 3
+          maxLength: 30
+          pattern: "^[a-z0-9]([a-z0-9._]*[a-z0-9])?$"
+          description: |
+            ASCII only, deliberately, even though the product launches in
+            Arabic. A handle appears in URLs and is read aloud, and mixed
+            scripts open homograph impersonation — Cyrillic `а` is
+            indistinguishable from Latin `a` in most fonts. `displayName`
+            is unrestricted Unicode and is the field that carries a name.
+            Separators may not lead, trail, or repeat.
+        displayName:
+          type: string
+          maxLength: 100
+          description: Full Unicode. Defaults to the handle if omitted.
+        dateOfBirth:
+          type: string
+          format: date
+          description: |
+            `YYYY-MM-DD`. Date-only on purpose: a full timestamp would make
+            the age band depend on a client-supplied timezone, and a birth
+            date does not have one.
+        locale: { type: string, default: en, examples: [ar, en] }
+        region: { type: string, default: EG }
+        deviceName: { type: string }
+        platform:
+          type: string
+          enum: [android, ios, web, unknown]
+          default: unknown
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+        deviceName: { type: string }
+        platform: { type: string, enum: [android, ios, web, unknown] }
+
+    Session:
+      type: object
+      required: [accessToken, expiresAt, sessionId, user]
+      properties:
+        accessToken: { type: string }
+        refreshToken:
+          type: string
+          description: |
+            Absent on an in-window refresh replay, where the caller already
+            holds a usable token.
+        expiresAt: { type: string, format: date-time }
+        sessionId: { type: string, format: uuid }
+        user: { $ref: "#/components/schemas/User" }
+
+    User:
+      type: object
+      description: |
+        The public shape. Note what is NOT here: no email, no date of birth,
+        and no password material of any kind.
+      required: [id, handle, displayName, locale, region, numeralSystem, ageBand, entitlementTier, isDiscoverable, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        handle: { type: string }
+        displayName: { type: string }
+        avatarUrl: { type: string, format: uri }
+        locale: { type: string }
+        region: { type: string }
+        numeralSystem:
+          type: string
+          enum: [western, eastern]
+          description: |
+            A user preference, not a locale consequence (§3.6) — an Arabic
+            speaker may well prefer Western digits.
+        ageBand:
+          type: string
+          enum: [under_13, teen_13_15, teen_16_17, adult]
+          description: |
+            Capability hangs off the band, so it is stored rather than
+            recomputed. `under_13` never appears: those accounts are refused.
+        entitlementTier: { type: string, enum: [free, plus] }
+        isDiscoverable: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    RoomState:
+      type: string
+      enum: [LOBBY, READY, PLAYING, ENDED]
+
+    CreateRoomRequest:
+      type: object
+      required: [contentId]
+      properties:
+        contentId: { type: string, format: uuid }
+        title: { type: string, maxLength: 120, description: Counted in characters, not bytes. }
+        visibility: { type: string, enum: [private, public], default: private }
+        syncMode:
+          type: string
+          enum: [COMPANION, MANUAL]
+          default: COMPANION
+          description: COMPANION is the mode ADR-002 exists for.
+
+    Participant:
+      type: object
+      required: [userId, isHost, connected, joinedAt]
+      properties:
+        userId: { type: string, format: uuid }
+        isHost: { type: boolean }
+        connected:
+          type: boolean
+          description: Live socket presence, from the hub rather than the database.
+        joinedAt: { type: string, format: date-time }
+
+    Room:
+      type: object
+      required: [id, contentId, hostUserId, visibility, state, syncMode, maxParticipants, currentSeq, createdAt, serverTime]
+      properties:
+        id: { type: string, format: uuid }
+        contentId: { type: string, format: uuid }
+        hostUserId: { type: string, format: uuid }
+        joinCode:
+          type: string
+          pattern: "^[0-9A-HJKMNP-TV-Z]{6}$"
+          description: |
+            Members only. Absent from any response a non-member can obtain,
+            and from the `leave` response — it is the credential that admits
+            somebody to the room.
+        shareUrl:
+          type: string
+          format: uri
+          description: |
+            An https Universal Link, never a custom scheme: any app can claim
+            a custom scheme, whereas a Universal Link is bound to a domain an
+            attacker does not control (§1.9 L4).
+        visibility: { type: string, enum: [private, public] }
+        state: { $ref: "#/components/schemas/RoomState" }
+        syncMode: { type: string, enum: [COMPANION, MANUAL] }
+        title: { type: string }
+        maxParticipants: { type: integer, description: From the HOST's tier. }
+        currentSeq:
+          type: integer
+          format: int64
+          description: |
+            The room's position in its event log. A reconnecting client
+            compares its own `lastSeq` against this to decide whether it needs
+            a resync at all.
+        anchorServerTime:
+          type: string
+          format: date-time
+          description: ADR-002's anchor. Present once the room has started.
+        anchorOffsetMs: { type: integer, format: int64 }
+        reanchorCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time }
+        endReason:
+          type: string
+          enum: [host_ended, reaper_abandoned, moderation, error]
+        participants:
+          type: array
+          items: { $ref: "#/components/schemas/Participant" }
+        serverTime:
+          type: string
+          format: date-time
+          description: |
+            The server's clock at the moment of the response. Present on every
+            room payload so a client always has a fresh reference for ADR-002
+            without a second round trip.
+
+    Envelope:
+      type: object
+      description: |
+        A durable room event (§7.2). Delivered inside an `EVENT` frame on the
+        socket, and in the `events` array of a `DELTA`.
+      required: [v, id, room, seq, type, ts, payload]
+      properties:
+        v: { type: integer, const: 1, description: Changing this is a protocol break. }
+        id:
+          type: string
+          format: uuid
+          description: |
+            The client's dedupe key (FR-34). Clients keep the last 500 and
+            must apply each event exactly once.
+        room: { type: string, format: uuid }
+        seq:
+          type: integer
+          format: int64
+          minimum: 1
+          description: |
+            Gap-free and monotonic per room, starting at 1. A gap is the
+            client's signal to resync — it is never normal.
+        type:
+          type: string
+          description: |
+            An unknown type must be **ignored and logged**, never treated as
+            an error (FR-33), so a server can ship a new event before every
+            client understands it.
+          examples: [ROOM_STATE_CHANGED, PARTICIPANT_JOINED, HOST_CHANGED, ROOM_ENDED]
+        ts: { type: string, format: date-time, description: The server clock. }
+        actor:
+          type: string
+          format: uuid
+          description: Absent for server-originated events such as the reaper.
+        payload:
+          type: object
+          description: Always present; `{}` when there is no data.
+
+    Readiness:
+      type: object
+      required: [ready, checks]
+      properties:
+        ready: { type: boolean }
+        checks:
+          type: object
+          additionalProperties: { type: string }
