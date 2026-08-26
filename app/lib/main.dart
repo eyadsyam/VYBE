@@ -8,9 +8,16 @@
 /// localisation, and hand off. Nothing else.
 library;
 
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import 'app/providers.dart';
+import 'app/router.dart';
+import 'core/network/api_client.dart';
 import 'core/ui/tokens.dart';
 import 'l10n/generated/app_localizations.dart';
 
@@ -20,15 +27,45 @@ void main() {
   // ProviderScope is the DI root (ADR-001). Every dependency the app has is
   // reachable from here and overridable in a test via
   // ProviderContainer(overrides: [...]).
-  runApp(const ProviderScope(child: VybeApp()));
+  runApp(
+    ProviderScope(
+      overrides: [apiEndpointProvider.overrideWithValue(_endpoint())],
+      child: const VybeApp(),
+    ),
+  );
 }
+
+/// Where the API lives for this build.
+///
+/// The Android emulator maps the host's loopback to 10.0.2.2, so `localhost`
+/// there is the emulated device itself — a developer following the README on
+/// Android would otherwise get a connection refused with nothing explaining
+/// it. Everything else uses loopback directly.
+///
+/// A `--dart-define` wins over both, because that is how a real build points
+/// at staging without editing source.
+ApiEndpoint _endpoint() {
+  const configured = String.fromEnvironment('VYBE_API_BASE_URL');
+  if (configured.isNotEmpty) return ApiEndpoint(configured);
+
+  if (!kIsWeb && Platform.isAndroid) return ApiEndpoint.androidEmulator;
+  return ApiEndpoint.localhost;
+}
+
+/// The router, built once and kept alive for the app's lifetime.
+///
+/// A provider rather than a field, because it needs `ref` to watch the session
+/// — and rebuilding a GoRouter on every widget rebuild would reset the
+/// navigation stack under the user.
+final routerProvider = Provider<GoRouter>((ref) => createRouter(ref));
 
 class VybeApp extends ConsumerWidget {
   const VybeApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return MaterialApp(
+    return MaterialApp.router(
+      routerConfig: ref.watch(routerProvider),
       onGenerateTitle: (context) => L10n.of(context).appTitle,
 
       // §3.6: Arabic and English both ship in V1. `supportedLocales` drives
@@ -56,8 +93,6 @@ class VybeApp extends ConsumerWidget {
           child: child ?? const SizedBox.shrink(),
         );
       },
-
-      home: const _BootstrapScreen(),
     );
   }
 }
@@ -94,63 +129,4 @@ ThemeData _buildTheme(Brightness brightness) {
       margin: EdgeInsets.zero,
     ),
   );
-}
-
-/// Placeholder root.
-///
-/// The five-tab shell of §3.1 lands in M1 with the vertical slice. This screen
-/// exists so the app runs and the l10n pipeline is exercised end to end —
-/// including at 200% scale and in RTL — before any screen depends on it.
-///
-/// It is honest about being a placeholder rather than a demo of nothing:
-/// §0.3 rule 2 forbids real-looking UI over absent functionality.
-class _BootstrapScreen extends StatelessWidget {
-  const _BootstrapScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = L10n.of(context);
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: Space.screen,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                l10n.appTitle,
-                style: theme.textTheme.displaySmall?.copyWith(
-                  fontSize: TypeScale.display,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: Space.sm),
-              Text(
-                l10n.syncPrepareInstruction,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontSize: TypeScale.body,
-                ),
-              ),
-              const SizedBox(height: Space.xl),
-              Semantics(
-                // §3.5: countdown state is announced, and never conveyed by
-                // colour alone.
-                liveRegion: true,
-                child: Text(
-                  l10n.syncNotMeasured,
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    fontSize: TypeScale.label,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

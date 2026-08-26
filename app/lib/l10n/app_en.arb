@@ -1,92 +1,140 @@
 {
   "@@locale": "en",
-
   "appTitle": "VYBE",
   "@appTitle": {
     "description": "Application name. A brand name, so it is not translated."
   },
-
   "navHome": "Home",
-  "@navHome": { "description": "Bottom navigation: Home tab (IA in 3.1)" },
+  "@navHome": {
+    "description": "Bottom navigation: Home tab (IA in 3.1)"
+  },
   "navDiscover": "Discover",
-  "@navDiscover": { "description": "Bottom navigation: Discover tab" },
+  "@navDiscover": {
+    "description": "Bottom navigation: Discover tab"
+  },
   "navRooms": "Rooms",
-  "@navRooms": { "description": "Bottom navigation: Rooms tab. Sits centre and is visually emphasised because it is the product." },
+  "@navRooms": {
+    "description": "Bottom navigation: Rooms tab. Sits centre and is visually emphasised because it is the product."
+  },
   "navActivity": "Activity",
-  "@navActivity": { "description": "Bottom navigation: Activity tab" },
+  "@navActivity": {
+    "description": "Bottom navigation: Activity tab"
+  },
   "navProfile": "Profile",
-  "@navProfile": { "description": "Bottom navigation: Profile tab" },
-
+  "@navProfile": {
+    "description": "Bottom navigation: Profile tab"
+  },
   "syncPrepareTitle": "Get ready",
-  "@syncPrepareTitle": { "description": "Heading of the sync ritual preparation step (3.3)" },
+  "@syncPrepareTitle": {
+    "description": "Heading of the sync ritual preparation step (3.3)"
+  },
   "syncPrepareInstruction": "Open your streaming app and queue the episode. Do not press play yet.",
   "@syncPrepareInstruction": {
     "description": "The core instruction of Companion Sync. VYBE cannot see the user's player, so this sentence IS the contract (ADR-002). Translations must not imply VYBE controls playback."
   },
   "syncCountdownPlay": "PLAY",
-  "@syncCountdownPlay": { "description": "Shown at zero, when everyone presses play simultaneously" },
+  "@syncCountdownPlay": {
+    "description": "Shown at zero, when everyone presses play simultaneously"
+  },
   "syncCountdownSeconds": "{count, plural, =1{1 second} other{{count} seconds}}",
   "@syncCountdownSeconds": {
     "description": "Countdown announcement. Also read by screen readers at 10s, 5s and 0 (NFR-18).",
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
-
   "syncOutOfSyncButton": "I am out of sync",
-  "@syncOutOfSyncButton": { "description": "Opens the drift correction sheet (FR-25)" },
+  "@syncOutOfSyncButton": {
+    "description": "Opens the drift correction sheet (FR-25)"
+  },
   "syncNudgeBehind": "I am behind",
-  "@syncNudgeBehind": { "description": "Nudges only this user's local offset back 5s. Affects nobody else." },
+  "@syncNudgeBehind": {
+    "description": "Nudges only this user's local offset back 5s. Affects nobody else."
+  },
   "syncNudgeAhead": "I am ahead",
-  "@syncNudgeAhead": { "description": "Nudges only this user's local offset forward 5s. Affects nobody else." },
+  "@syncNudgeAhead": {
+    "description": "Nudges only this user's local offset forward 5s. Affects nobody else."
+  },
   "syncRequestReanchor": "Ask the host to resync everyone",
-  "@syncRequestReanchor": { "description": "Requests a TIMELINE_REANCHOR, which does move the whole room (FR-26)" },
+  "@syncRequestReanchor": {
+    "description": "Requests a TIMELINE_REANCHOR, which does move the whole room (FR-26)"
+  },
   "syncDegraded": "Your connection is too unstable to keep time. Timed events are paused.",
   "@syncDegraded": {
     "description": "Shown when every clock sample exceeds the RTT ceiling (FR-24, EC-13). Timed events are suppressed rather than fired at an unknown offset."
   },
   "syncNotMeasured": "Syncing clocks…",
-  "@syncNotMeasured": { "description": "Before the first usable PING/PONG sample. Deliberately distinct from degraded." },
-
+  "@syncNotMeasured": {
+    "description": "Before the first usable PING/PONG sample. Deliberately distinct from degraded."
+  },
   "roomParticipants": "{count, plural, =0{No one here yet} =1{1 watching} other{{count} watching}}",
   "@roomParticipants": {
     "description": "Participant count in the room mini-bar",
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "roomShareInvite": "Share invite",
-  "@roomShareInvite": { "description": "Copies the https://vybe.app/r/{code} universal link (FR-13)" },
+  "@roomShareInvite": {
+    "description": "Copies the https://vybe.app/r/{code} universal link (FR-13)"
+  },
   "roomEndedTitle": "This room has ended",
   "@roomEndedTitle": {
     "description": "A dedicated screen, not a generic error. 3.2 requires this to be its own state."
   },
   "roomFullTitle": "This room is full",
-  "@roomFullTitle": { "description": "Free tier caps at 4 participants (FR-16)" },
+  "@roomFullTitle": {
+    "description": "Free tier caps at 4 participants (FR-16)"
+  },
   "roomInviteExpired": "This invite is no longer valid",
-  "@roomInviteExpired": { "description": "Dedicated screen per 3.2" },
-
+  "@roomInviteExpired": {
+    "description": "Dedicated screen per 3.2"
+  },
   "triviaSubmitted": "Answer locked in",
   "@triviaSubmitted": {
     "description": "Shown after submitting. Deliberately does NOT say correct or incorrect: the answer key does not reach the device until QUESTION_CLOSE (ADR-004, FR-51)."
   },
   "triviaCorrect": "Correct",
-  "@triviaCorrect": { "description": "Always paired with an icon and this text, never colour alone (3.5)" },
+  "@triviaCorrect": {
+    "description": "Always paired with an icon and this text, never colour alone (3.5)"
+  },
   "triviaIncorrect": "Incorrect",
-  "@triviaIncorrect": { "description": "Always paired with an icon and this text, never colour alone (3.5)" },
+  "@triviaIncorrect": {
+    "description": "Always paired with an icon and this text, never colour alone (3.5)"
+  },
   "triviaPointsAwarded": "+{points} XP",
   "@triviaPointsAwarded": {
     "description": "Points earned for a question",
-    "placeholders": { "points": { "type": "int" } }
+    "placeholders": {
+      "points": {
+        "type": "int"
+      }
+    }
   },
-
   "stateEmptyRoomsTitle": "No rooms yet",
-  "@stateEmptyRoomsTitle": { "description": "Empty state heading. 3.2 requires illustration + one sentence + one primary action." },
+  "@stateEmptyRoomsTitle": {
+    "description": "Empty state heading. 3.2 requires illustration + one sentence + one primary action."
+  },
   "stateEmptyRoomsBody": "Start a room and invite a friend — watching together is the whole point.",
-  "@stateEmptyRoomsBody": { "description": "Empty state explanation, one sentence" },
+  "@stateEmptyRoomsBody": {
+    "description": "Empty state explanation, one sentence"
+  },
   "stateEmptyRoomsAction": "Create a room",
-  "@stateEmptyRoomsAction": { "description": "The single primary action of the empty state" },
-
+  "@stateEmptyRoomsAction": {
+    "description": "The single primary action of the empty state"
+  },
   "errorRetry": "Try again",
-  "@errorRetry": { "description": "Retry action on a retryable error (3.2)" },
+  "@errorRetry": {
+    "description": "Retry action on a retryable error (3.2)"
+  },
   "errorOffline": "You are offline",
-  "@errorOffline": { "description": "Offline banner heading" },
+  "@errorOffline": {
+    "description": "Offline banner heading"
+  },
   "errorRequiresConnection": "This needs a connection. It cannot be saved for later.",
   "@errorRequiresConnection": {
     "description": "FR-64. Shown for chat, reactions, trivia answers and room joins. Never an optimistic success: Global Master Prompt 53 forbids the silent fallback."
@@ -94,104 +142,423 @@
   "errorRateLimited": "Too many attempts. Try again in {seconds} seconds.",
   "@errorRateLimited": {
     "description": "3.2 requires the actual wait, not 'try again later'",
-    "placeholders": { "seconds": { "type": "int" } }
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
   },
   "errorSessionRevoked": "You have been signed out because your session was used from somewhere unexpected. Please sign in again.",
   "@errorSessionRevoked": {
     "description": "ADR-011 refresh-token reuse detection (EC-8). 3.2 forbids a silent redirect, so the user is told why."
   },
-
   "freshnessUpdatedAgo": "Updated {ago}",
   "@freshnessUpdatedAgo": {
     "description": "11.2 freshness indicator. Stale data must never be presented as live.",
-    "placeholders": { "ago": { "type": "String" } }
+    "placeholders": {
+      "ago": {
+        "type": "String"
+      }
+    }
   },
   "freshnessOfflineStale": "Offline — showing saved data",
-  "@freshnessOfflineStale": { "description": "11.2 Expired tier banner" }
-,
-
+  "@freshnessOfflineStale": {
+    "description": "11.2 Expired tier banner"
+  },
   "stateLoading": "Loading",
-  "@stateLoading": { "description": "Semantic label for a first-load skeleton (3.2). Screen readers need something to announce; sighted users see the skeleton." },
+  "@stateLoading": {
+    "description": "Semantic label for a first-load skeleton (3.2). Screen readers need something to announce; sighted users see the skeleton."
+  },
   "stateRefreshing": "Refreshing",
-  "@stateRefreshing": { "description": "3.2 refresh state: existing content stays visible and this is the subtle indicator's semantic label." },
-
+  "@stateRefreshing": {
+    "description": "3.2 refresh state: existing content stays visible and this is the subtle indicator's semantic label."
+  },
   "stateEmptyTitle": "Nothing here yet",
-  "@stateEmptyTitle": { "description": "Generic empty-state heading for a surface with no domain-specific copy of its own." },
+  "@stateEmptyTitle": {
+    "description": "Generic empty-state heading for a surface with no domain-specific copy of its own."
+  },
   "stateEmptyBody": "When there is something to show, it will appear here.",
-  "@stateEmptyBody": { "description": "Generic empty-state explanation, one sentence per 3.2." },
-
+  "@stateEmptyBody": {
+    "description": "Generic empty-state explanation, one sentence per 3.2."
+  },
   "errorRetryableTitle": "That did not work",
-  "@errorRetryableTitle": { "description": "Heading of a retryable error (3.2). The cause follows in plain language." },
+  "@errorRetryableTitle": {
+    "description": "Heading of a retryable error (3.2). The cause follows in plain language."
+  },
   "errorTerminalTitle": "We cannot complete this",
-  "@errorTerminalTitle": { "description": "Heading of a terminal error (3.2): what happened, what to do, support path." },
+  "@errorTerminalTitle": {
+    "description": "Heading of a terminal error (3.2): what happened, what to do, support path."
+  },
   "errorSupportAction": "Contact support",
-  "@errorSupportAction": { "description": "The support path 3.2 requires on a terminal error." },
+  "@errorSupportAction": {
+    "description": "The support path 3.2 requires on a terminal error."
+  },
   "errorNetworkBody": "We could not reach VYBE. Check your connection, then try again.",
-  "@errorNetworkBody": { "description": "Transport failure on a device that believes it is online: timeout, DNS, TLS." },
+  "@errorNetworkBody": {
+    "description": "Transport failure on a device that believes it is online: timeout, DNS, TLS."
+  },
   "errorServerBody": "VYBE had a problem on its side. Nothing you did caused this.",
-  "@errorServerBody": { "description": "5xx. Says whose fault it is, because blaming the user for a server fault is the default failure of generic error copy." },
+  "@errorServerBody": {
+    "description": "5xx. Says whose fault it is, because blaming the user for a server fault is the default failure of generic error copy."
+  },
   "errorUnexpectedBody": "Something unexpected happened, and we have recorded it.",
-  "@errorUnexpectedBody": { "description": "UnexpectedFailure. Honest that it was not anticipated rather than pretending it was." },
+  "@errorUnexpectedBody": {
+    "description": "UnexpectedFailure. Honest that it was not anticipated rather than pretending it was."
+  },
   "errorValidationBody": "Check the highlighted fields, then try again.",
-  "@errorValidationBody": { "description": "Field-level validation summary; each field carries its own message." },
+  "@errorValidationBody": {
+    "description": "Field-level validation summary; each field carries its own message."
+  },
   "errorConflictStaleWrite": "Someone changed this before you did. Reload to see the current version.",
-  "@errorConflictStaleWrite": { "description": "11.4 stale write. The user is told what to do, not just that it failed." },
+  "@errorConflictStaleWrite": {
+    "description": "11.4 stale write. The user is told what to do, not just that it failed."
+  },
   "errorConflictInvalidState": "This is no longer possible in the room's current state.",
-  "@errorConflictInvalidState": { "description": "FR-15 illegal state transition, rejected server-side with 409." },
+  "@errorConflictInvalidState": {
+    "description": "FR-15 illegal state transition, rejected server-side with 409."
+  },
   "errorTraceId": "Reference: {traceId}",
   "@errorTraceId": {
     "description": "14.2. Shown on terminal errors so a user report can be joined to the server trace.",
-    "placeholders": { "traceId": { "type": "String" } }
+    "placeholders": {
+      "traceId": {
+        "type": "String"
+      }
+    }
   },
   "errorOfflineBody": "You are seeing saved data. Anything that needs the network will wait.",
-  "@errorOfflineBody": { "description": "3.2 offline state. Paired with a freshness indicator so nothing stale reads as live (11.2)." },
-
+  "@errorOfflineBody": {
+    "description": "3.2 offline state. Paired with a freshness indicator so nothing stale reads as live (11.2)."
+  },
   "authRequiredTitle": "Sign in to continue",
-  "@authRequiredTitle": { "description": "3.2 unauthorised state. No silent redirect: explain, then offer sign-in." },
+  "@authRequiredTitle": {
+    "description": "3.2 unauthorised state. No silent redirect: explain, then offer sign-in."
+  },
   "authRequiredBody": "This part of VYBE is only available to signed-in accounts.",
-  "@authRequiredBody": { "description": "The explanation that must precede the sign-in offer." },
+  "@authRequiredBody": {
+    "description": "The explanation that must precede the sign-in offer."
+  },
   "authSignInAction": "Sign in",
-  "@authSignInAction": { "description": "Primary action of the unauthorised state." },
+  "@authSignInAction": {
+    "description": "Primary action of the unauthorised state."
+  },
   "authForbiddenTitle": "You do not have access",
-  "@authForbiddenTitle": { "description": "Signed in but not permitted. Kept distinct from authRequiredTitle: offering sign-in to someone already signed in is nonsense." },
+  "@authForbiddenTitle": {
+    "description": "Signed in but not permitted. Kept distinct from authRequiredTitle: offering sign-in to someone already signed in is nonsense."
+  },
   "authForbiddenBody": "Your account is signed in, but it is not allowed to open this.",
-  "@authForbiddenBody": { "description": "FR-14: possession of a join code grants nothing; the server decides." },
-
+  "@authForbiddenBody": {
+    "description": "FR-14: possession of a join code grants nothing; the server decides."
+  },
   "notFoundTitle": "We could not find that",
-  "@notFoundTitle": { "description": "3.2 not-found state, its own screen rather than a generic error." },
+  "@notFoundTitle": {
+    "description": "3.2 not-found state, its own screen rather than a generic error."
+  },
   "notFoundBody": "The link may be wrong, or what it pointed to is gone.",
-  "@notFoundBody": { "description": "Covers a mistyped join code and a deleted resource without guessing which." },
+  "@notFoundBody": {
+    "description": "Covers a mistyped join code and a deleted resource without guessing which."
+  },
   "actionGoHome": "Go to Home",
-  "@actionGoHome": { "description": "Escape hatch offered by the not-found and terminal-error states." },
-
+  "@actionGoHome": {
+    "description": "Escape hatch offered by the not-found and terminal-error states."
+  },
   "errorRateLimitedTitle": "Too many attempts",
-  "@errorRateLimitedTitle": { "description": "12.3 heading. The body carries the real wait." },
+  "@errorRateLimitedTitle": {
+    "description": "12.3 heading. The body carries the real wait."
+  },
   "errorRateLimitedReady": "You can try again now.",
-  "@errorRateLimitedReady": { "description": "Shown once the Retry-After window has elapsed, replacing the countdown." },
-
+  "@errorRateLimitedReady": {
+    "description": "Shown once the Retry-After window has elapsed, replacing the countdown."
+  },
   "roomEndedBody": "It cannot be reopened. Start a new room to keep watching together.",
-  "@roomEndedBody": { "description": "Pairs with roomEndedTitle. 3.2 requires a dedicated screen for this, not a generic error." },
+  "@roomEndedBody": {
+    "description": "Pairs with roomEndedTitle. 3.2 requires a dedicated screen for this, not a generic error."
+  },
   "roomFullBody": "This room already has as many people as it can hold.",
-  "@roomFullBody": { "description": "FR-16 participant cap, enforced server-side against the caller's entitlement." },
-
+  "@roomFullBody": {
+    "description": "FR-16 participant cap, enforced server-side against the caller's entitlement."
+  },
   "agoJustNow": "just now",
-  "@agoJustNow": { "description": "11.2 freshness age, under a minute old. Substituted into freshnessUpdatedAgo." },
+  "@agoJustNow": {
+    "description": "11.2 freshness age, under a minute old. Substituted into freshnessUpdatedAgo."
+  },
   "agoMinutes": "{count, plural, =1{1 minute ago} other{{count} minutes ago}}",
   "@agoMinutes": {
     "description": "11.2 freshness age in minutes. Substituted into freshnessUpdatedAgo.",
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "agoHours": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
   "@agoHours": {
     "description": "11.2 freshness age in hours. AC-32's 'updated 2h ago'.",
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
   "agoDays": "{count, plural, =1{1 day ago} other{{count} days ago}}",
   "@agoDays": {
     "description": "11.2 freshness age in days.",
-    "placeholders": { "count": { "type": "int" } }
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   },
-
   "deepLinkOpening": "Opening…",
-  "@deepLinkOpening": { "description": "FR-13. Shown while the server authorises a join code; the client never assumes the link grants access." }
+  "@deepLinkOpening": {
+    "description": "FR-13. Shown while the server authorises a join code; the client never assumes the link grants access."
+  },
+  "authSignInTitle": "Sign in",
+  "@authSignInTitle": {
+    "description": "Sign-in screen title"
+  },
+  "authCreateAccountTitle": "Create your account",
+  "@authCreateAccountTitle": {
+    "description": "Registration screen title"
+  },
+  "authEmailLabel": "Email",
+  "@authEmailLabel": {
+    "description": "Email field label"
+  },
+  "authPasswordLabel": "Password",
+  "@authPasswordLabel": {
+    "description": "Password field label"
+  },
+  "authHandleLabel": "Handle",
+  "@authHandleLabel": {
+    "description": "Public handle field label"
+  },
+  "authHandleHint": "a-z, 0-9, dot or underscore",
+  "@authHandleHint": {
+    "description": "Handle field helper text"
+  },
+  "authDisplayNameLabel": "Display name",
+  "@authDisplayNameLabel": {
+    "description": "Display name field label"
+  },
+  "authDateOfBirthLabel": "Date of birth",
+  "@authDateOfBirthLabel": {
+    "description": "Date of birth field label"
+  },
+  "authSwitchToRegister": "Create an account",
+  "@authSwitchToRegister": {
+    "description": "Link to the registration form"
+  },
+  "authSwitchToSignIn": "I already have an account",
+  "@authSwitchToSignIn": {
+    "description": "Link back to the sign-in form"
+  },
+  "authPasswordTooShort": "Use at least 12 characters",
+  "@authPasswordTooShort": {
+    "description": "Password below the minimum length"
+  },
+  "authHandleInvalid": "Handles use a-z, 0-9, dot or underscore",
+  "@authHandleInvalid": {
+    "description": "Handle failed local validation"
+  },
+  "authEmailInvalid": "Enter a valid email address",
+  "@authEmailInvalid": {
+    "description": "Email failed local validation"
+  },
+  "authRequiredField": "This field is required",
+  "@authRequiredField": {
+    "description": "A required field was left empty"
+  },
+  "authUnderMinimumAge": "You must be at least 13 to create an account",
+  "@authUnderMinimumAge": {
+    "description": "Below the minimum age (12.4)"
+  },
+  "authSelectDate": "Select",
+  "@authSelectDate": {
+    "description": "Opens the date picker"
+  },
+  "roomsTitle": "Your rooms",
+  "@roomsTitle": {
+    "description": "Rooms list screen title"
+  },
+  "roomsCreateAction": "Start a room",
+  "@roomsCreateAction": {
+    "description": "Creates a new room"
+  },
+  "roomsJoinAction": "Join with a code",
+  "@roomsJoinAction": {
+    "description": "Opens the join-by-code screen"
+  },
+  "roomsEmptyTitle": "No rooms yet",
+  "@roomsEmptyTitle": {
+    "description": "Empty state on the rooms list"
+  },
+  "roomsEmptyBody": "Start a watch party, or join one with a code a friend shared.",
+  "@roomsEmptyBody": {
+    "description": "Empty state body on the rooms list"
+  },
+  "roomsSignOutAction": "Sign out",
+  "@roomsSignOutAction": {
+    "description": "Signs the user out"
+  },
+  "roomsLoadMore": "Load more",
+  "@roomsLoadMore": {
+    "description": "Fetches the next page of rooms"
+  },
+  "joinTitle": "Join a room",
+  "@joinTitle": {
+    "description": "Join-by-code screen title"
+  },
+  "joinCodeLabel": "Join code",
+  "@joinCodeLabel": {
+    "description": "Join code field label"
+  },
+  "joinCodeHint": "Six characters, as shared with you",
+  "@joinCodeHint": {
+    "description": "Join code field helper"
+  },
+  "joinAction": "Join",
+  "@joinAction": {
+    "description": "Submits the join code"
+  },
+  "joinCodeIncomplete": "A join code is six characters",
+  "@joinCodeIncomplete": {
+    "description": "The typed code is not yet complete"
+  },
+  "joinNotFound": "No room with that code",
+  "@joinNotFound": {
+    "description": "The code did not resolve to a live room"
+  },
+  "joinAlreadyIn": "You are already in this room",
+  "@joinAlreadyIn": {
+    "description": "The user is already a participant"
+  },
+  "roomHostLabel": "Host",
+  "@roomHostLabel": {
+    "description": "Marks the host in the participant list"
+  },
+  "roomYouLabel": "You",
+  "@roomYouLabel": {
+    "description": "Marks the current user in the participant list"
+  },
+  "roomSeatsLabel": "{filled} of {total} seats",
+  "@roomSeatsLabel": {
+    "description": "Participant count against capacity",
+    "placeholders": {
+      "filled": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "roomCodeLabel": "Room code",
+  "@roomCodeLabel": {
+    "description": "Label above the shareable join code"
+  },
+  "roomCopyCode": "Copy code",
+  "@roomCopyCode": {
+    "description": "Copies the join code to the clipboard"
+  },
+  "roomCodeCopied": "Code copied",
+  "@roomCodeCopied": {
+    "description": "Confirmation that the code was copied"
+  },
+  "roomLeaveAction": "Leave room",
+  "@roomLeaveAction": {
+    "description": "Leaves the room"
+  },
+  "roomEndAction": "End room",
+  "@roomEndAction": {
+    "description": "Host ends the room for everyone"
+  },
+  "roomArmAction": "Get ready",
+  "@roomArmAction": {
+    "description": "Host arms the sync ritual (FR-19)"
+  },
+  "roomStartAction": "Start playback",
+  "@roomStartAction": {
+    "description": "Host starts the shared timeline"
+  },
+  "roomCancelAction": "Cancel",
+  "@roomCancelAction": {
+    "description": "Host abandons an armed ritual"
+  },
+  "roomReanchorAction": "Re-sync everyone",
+  "@roomReanchorAction": {
+    "description": "Host restarts the sync ritual (FR-24)"
+  },
+  "roomStateLobby": "Waiting to start",
+  "@roomStateLobby": {
+    "description": "Room state: LOBBY"
+  },
+  "roomStateReady": "Ready",
+  "@roomStateReady": {
+    "description": "Room state: READY"
+  },
+  "roomStatePlaying": "Playing",
+  "@roomStatePlaying": {
+    "description": "Room state: PLAYING"
+  },
+  "roomStateEnded": "Ended",
+  "@roomStateEnded": {
+    "description": "Room state: ENDED"
+  },
+  "roomConnecting": "Connecting…",
+  "@roomConnecting": {
+    "description": "Socket is connecting"
+  },
+  "roomReconnecting": "Reconnecting…",
+  "@roomReconnecting": {
+    "description": "Socket dropped and is retrying"
+  },
+  "roomLive": "Live",
+  "@roomLive": {
+    "description": "Socket is connected and receiving events"
+  },
+  "roomOnlyHostCanDo": "Only the host can do that",
+  "@roomOnlyHostCanDo": {
+    "description": "A non-host attempted a host-only action"
+  },
+  "roomConfirmEndTitle": "End this room?",
+  "@roomConfirmEndTitle": {
+    "description": "Confirmation dialog title before ending a room"
+  },
+  "roomConfirmEndBody": "Everyone will be disconnected. This cannot be undone.",
+  "@roomConfirmEndBody": {
+    "description": "Confirmation dialog body before ending a room"
+  },
+  "commonCancel": "Cancel",
+  "@commonCancel": {
+    "description": "Dismisses a dialog without acting"
+  },
+  "commonConfirm": "Confirm",
+  "@commonConfirm": {
+    "description": "Confirms a destructive action"
+  },
+  "commonRetry": "Try again",
+  "@commonRetry": {
+    "description": "Retries a failed action"
+  },
+  "createRoomTitle": "Start a room",
+  "@createRoomTitle": {
+    "description": "Create-room screen title"
+  },
+  "createRoomTitleLabel": "Room name",
+  "@createRoomTitleLabel": {
+    "description": "Optional room title field"
+  },
+  "createRoomTitleHint": "Optional",
+  "@createRoomTitleHint": {
+    "description": "The room name is not required"
+  },
+  "createRoomAction": "Create",
+  "@createRoomAction": {
+    "description": "Submits the create-room form"
+  },
+  "createRoomPickContent": "Choose something to watch",
+  "@createRoomPickContent": {
+    "description": "Prompt to select content before creating"
+  }
 }
