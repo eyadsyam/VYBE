@@ -289,21 +289,47 @@ func (d *DedupeLRU) Len() int { return len(d.seen) }
 // new event before every client understands it. This set is what the emitter
 // validates against, so a typo in an emitted type is caught here rather than
 // silently ignored by every client in the field.
+// The event vocabulary as constants.
+//
+// Emitters reference these rather than string literals, so a typo is a compile
+// error instead of an event that every client silently ignores under FR-33.
+// That failure mode is the reason to bother: an unknown type is *by design*
+// dropped without complaint, which means a misspelled emitted type produces no
+// error anywhere — not in the server, not in the client, not in the logs.
+const (
+	EventRoomStateChanged  = "ROOM_STATE_CHANGED"
+	EventParticipantJoined = "PARTICIPANT_JOINED"
+	EventParticipantLeft   = "PARTICIPANT_LEFT"
+	EventHostChanged       = "HOST_CHANGED"
+	EventSyncArm           = "SYNC_ARM"
+	EventTimelineAnchored  = "TIMELINE_ANCHORED"
+	EventTimelineReanchor  = "TIMELINE_REANCHOR"
+	EventChatMessage       = "CHAT_MESSAGE"
+	EventReactionBucket    = "REACTION_BUCKET"
+	EventTriviaStart       = "TRIVIA_START"
+	EventQuestionOpen      = "QUESTION_OPEN"
+	EventQuestionClose     = "QUESTION_CLOSE"
+	EventScoreboardUpdate  = "SCOREBOARD_UPDATE"
+	EventRoomEnded         = "ROOM_ENDED"
+	EventPresenceChanged   = "PRESENCE_CHANGED"
+)
+
 var KnownEventTypes = map[string]bool{
-	"ROOM_STATE_CHANGED": true,
-	"PARTICIPANT_JOINED": true,
-	"PARTICIPANT_LEFT":   true,
-	"HOST_CHANGED":       true,
-	"SYNC_ARM":           true,
-	"TIMELINE_ANCHORED":  true,
-	"TIMELINE_REANCHOR":  true,
-	"CHAT_MESSAGE":       true,
-	"REACTION_BUCKET":    true,
-	"TRIVIA_START":       true,
-	"QUESTION_OPEN":      true,
-	"QUESTION_CLOSE":     true,
-	"SCOREBOARD_UPDATE":  true,
-	"ROOM_ENDED":         true,
+	EventRoomStateChanged:  true,
+	EventParticipantJoined: true,
+	EventParticipantLeft:   true,
+	EventHostChanged:       true,
+	EventSyncArm:           true,
+	EventTimelineAnchored:  true,
+	EventTimelineReanchor:  true,
+	EventChatMessage:       true,
+	EventReactionBucket:    true,
+	EventTriviaStart:       true,
+	EventQuestionOpen:      true,
+	EventQuestionClose:     true,
+	EventScoreboardUpdate:  true,
+	EventRoomEnded:         true,
+	EventPresenceChanged:   true,
 }
 
 // IsKnownEventType reports whether the emitter recognises a type.
