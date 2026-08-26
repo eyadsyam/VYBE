@@ -127,32 +127,52 @@ class _RoomCard extends StatelessWidget {
     final l10n = L10n.of(context);
     final theme = Theme.of(context);
 
+    final label = room.title?.isNotEmpty == true
+        // A room without a name falls back to its code rather than an empty
+        // row. The code is what the user recognises anyway.
+        ? room.title!
+        : JoinCode.format(room.joinCode ?? '');
+    final seats =
+        l10n.roomSeatsLabel(room.participants.length, room.maxParticipants);
+
     return Card(
       margin: EdgeInsets.zero,
-      child: ListTile(
-        // 48dp is the minimum touch target; at 200% text scale the default
-        // ListTile height is already larger, so this is a floor rather than a
-        // fixed size.
-        minVerticalPadding: Space.md,
+      child: InkWell(
         onTap: room.state.isTerminal
             ? null
             : () => context.go(Routes.roomPath(room.id)),
-        title: Text(
-          // A room without a name falls back to its code rather than showing an
-          // empty row. The code is the thing the user recognises anyway.
-          room.title?.isNotEmpty == true
-              ? room.title!
-              : JoinCode.format(room.joinCode ?? ''),
-        ),
-        subtitle: Text(
-          l10n.roomSeatsLabel(room.participants.length, room.maxParticipants),
-        ),
-        trailing: _StateChip(state: room.state),
-        // Semantics collapses the row into one announcement, so a screen reader
-        // does not read the title, the seat count, and the state as three
+        borderRadius: Radii.cardBorder,
+        // MergeSemantics so a screen reader announces the row once, rather
+        // than reading the title, the seat count, and the state as three
         // unrelated items.
-        enabled: !room.state.isTerminal,
-        titleTextStyle: theme.textTheme.titleMedium,
+        child: MergeSemantics(
+          child: Padding(
+            padding: const EdgeInsets.all(Space.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: theme.textTheme.titleMedium),
+                const SizedBox(height: Space.xs),
+                // A Wrap, NOT a Row.
+                //
+                // At 200% text scale the seat count and the state chip do not
+                // fit side by side in 360dp, and a Row overflows — which is
+                // exactly what NFR-16 forbids and what the golden matrix
+                // caught. Wrap reflows them onto a second line instead, and
+                // does it correctly in RTL without a manual mirror.
+                Wrap(
+                  spacing: Space.sm,
+                  runSpacing: Space.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(seats, style: theme.textTheme.bodySmall),
+                    _StateChip(state: room.state),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
