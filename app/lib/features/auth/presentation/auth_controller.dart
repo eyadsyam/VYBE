@@ -187,13 +187,20 @@ class AuthController extends Notifier<AuthState> {
       clearFailure: true,
     );
 
+    // Normalised ONCE, here, so the value that was validated is the value
+    // that is sent. Passing the raw handle while deriving the display-name
+    // fallback from the normalised one — as this did — is the kind of
+    // inconsistency that produces a user whose handle and fallback name
+    // disagree.
+    final normalisedHandle = HandleRules.normalise(handle);
+
     final result = await ref.read(publicAuthApiProvider).register(
-          email: email,
+          email: email.trim(),
           password: password,
-          handle: handle,
+          handle: normalisedHandle,
           displayName: displayName.trim().isEmpty
-              ? HandleRules.normalise(handle)
-              : displayName,
+              ? normalisedHandle
+              : displayName.trim(),
           dateOfBirth: dateOfBirth!,
           locale: locale,
         );
