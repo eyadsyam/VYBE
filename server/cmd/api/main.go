@@ -27,12 +27,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 	"github.com/redis/go-redis/v9"
 
 	"github.com/eyadsyam/vybe/server/internal/platform/config"
 	"github.com/eyadsyam/vybe/server/internal/platform/db"
+	"github.com/eyadsyam/vybe/server/internal/platform/httpx"
 )
 
 func main() {
@@ -69,7 +68,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	_ = signingKey // consumed by the identity module in M1
 
 	// Signals first, so a Ctrl-C during a slow database connect still exits.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -100,9 +98,20 @@ func run() error {
 		logger.Info("redis connected")
 	}
 
+	mods, err := buildModules(cfg, pool, rdb, signingKey, logger)
+	if err != nil {
+		return fmt.Errorf("wiring modules: %w", err)
+	}
+
+	// Idempotency records live in Postgres, not Redis. ADR-009 puts only
+	// RECONSTRUCTIBLE state in Redis, and an idempotency record is the exact
+	// opposite: it is the sole evidence a request already happened, so losing
+	// it duplicates work with nothing anywhere able to detect that.
+	idemStore := httpx.NewPostgresIdemStore(pool)
+
 	srv := &http.Server{
 		Addr:    cfg.HTTPAddr,
-		Handler: newRouter(cfg, pool, rdb, logger),
+		Handler: newRouter(cfg, pool, rdb, logger, mods, idemStore),
 
 		// Without these a slow-loris client holds a connection open forever.
 		// ReadHeaderTimeout in particular is the one that actually stops it.
@@ -134,6 +143,12 @@ func run() error {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer shutdownCancel()
 
+	// Close the sockets BEFORE Shutdown. http.Server.Shutdown does not touch
+	// hijacked connections, so without this it waits the full 20 seconds for
+	// WebSockets that will never close on their own, and every client then
+	// sees an abrupt 1006 instead of a close frame explaining the restart.
+	mods.hub.CloseAll("the server is restarting; reconnect and resync")
+
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("graceful shutdown failed: %w", err)
 	}
@@ -141,75 +156,21 @@ func run() error {
 	return nil
 }
 
-func newRouter(cfg *config.Config, pool poolPinger, rdb *redis.Client, logger *slog.Logger) http.Handler {
-	r := chi.NewRouter()
-
-	r.Use(middleware.RealIP)
-	r.Use(middleware.RequestID)
-	r.Use(middleware.Recoverer)
-	// §14.2 requires trace_id propagated from the mobile client; the full
-	// structured-logging middleware lands with the module facades in M1.
-	r.Use(middleware.Timeout(30 * time.Second))
-
-	// Liveness: is this process alive? Deliberately does NOT touch the
-	// database. A liveness probe that fails on a database blip gets the
-	// container killed and restarted, which does not fix the database and does
-	// lose every WebSocket it was holding.
-	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]any{"status": "ok"})
-	})
-
-	// Readiness: should this instance receive traffic? This one DOES check
-	// dependencies, because an instance that cannot reach Postgres should be
-	// taken out of the load balancer without being killed.
-	r.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		defer cancel()
-
-		checks := map[string]string{}
-		ready := true
-
-		if err := pool.Ping(ctx); err != nil {
-			checks["postgres"] = "unavailable"
-			ready = false // Postgres is the source of truth; without it we serve nothing
-		} else {
-			checks["postgres"] = "ok"
-		}
-
-		if err := rdb.Ping(ctx).Err(); err != nil {
-			// ADR-009 again: degraded, not unready.
-			checks["redis"] = "unavailable (degraded, not fatal — ADR-009)"
-		} else {
-			checks["redis"] = "ok"
-		}
-
-		status := http.StatusOK
-		if !ready {
-			status = http.StatusServiceUnavailable
-		}
-		writeJSON(w, status, map[string]any{"ready": ready, "checks": checks})
-	})
-
-	// An honest 404 for everything else. The module facades mount in M1; until
-	// then there is nothing here, and the response says so rather than
-	// returning shaped placeholder data.
-	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]any{
-			"type":   "https://vybe.app/problems/not-found",
-			"title":  "Not Found",
-			"status": 404,
-			"code":   "NOT_FOUND",
-			"detail": "No route. The v1 API mounts in M1; see specs/001-vertical-slice/spec.md.",
-		})
-	})
-
-	return r
-}
-
 // poolPinger is the slice of *pgxpool.Pool the router actually needs, so the
 // router stays testable without a live database.
 type poolPinger interface {
 	Ping(ctx context.Context) error
+}
+
+// redisPinger is the same seam for Redis.
+//
+// It exists for the same reason poolPinger does, and specifically so the
+// DEGRADED path is testable: ADR-009 says an unavailable Redis must keep the
+// instance ready, and asserting that without a way to make Redis unavailable
+// means never asserting it at all. Returning *redis.StatusCmd rather than an
+// error keeps *redis.Client satisfying this without an adapter.
+type redisPinger interface {
+	Ping(ctx context.Context) *redis.StatusCmd
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {

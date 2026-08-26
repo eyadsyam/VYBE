@@ -270,3 +270,27 @@ type PresenceChange struct {
 // twice, while a DISCONNECT waits, because most disconnects resolve
 // themselves before anybody needed to know.
 const PresenceDebounce = 5 * time.Second
+
+// CloseAll disconnects every client in every room.
+//
+// Called on shutdown, before http.Server.Shutdown. Shutdown does NOT touch
+// hijacked connections, so without this a graceful restart waits the full
+// termination grace for sockets that will never close on their own — and every
+// client then sees an abrupt 1006 rather than a close frame that says what
+// happened and that reconnecting is the right response.
+func (h *Hub) CloseAll(reason string) {
+	h.mu.Lock()
+	var sinks []Sink
+	for _, room := range h.rooms {
+		for _, s := range room {
+			sinks = append(sinks, s)
+		}
+	}
+	h.rooms = map[string]map[string]Sink{}
+	h.mu.Unlock()
+
+	for _, s := range sinks {
+		s.Close(reason)
+	}
+	h.logger.Info("closed every websocket", "count", len(sinks), "reason", reason)
+}

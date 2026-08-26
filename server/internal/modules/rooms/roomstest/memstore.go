@@ -15,6 +15,7 @@ package roomstest
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
 	"sync"
 	"time"
@@ -412,3 +413,104 @@ func itoa(n int64) string {
 }
 
 var _ rooms.Repository = (*Store)(nil)
+
+// ---------------------------------------------------------------------------
+// realtime.RoomReader
+// ---------------------------------------------------------------------------
+//
+// The same object satisfies both interfaces here, exactly as the Postgres
+// repository does in production. That is the point: a test that wired a
+// DIFFERENT fake into the realtime handler would not be exercising the
+// arrangement the composition root actually builds.
+
+// Membership reports the room's current seq if the user is a member.
+func (s *Store) Membership(_ context.Context, roomID, userID string) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.fail("Membership"); err != nil {
+		return 0, err
+	}
+	r, ok := s.rooms[roomID]
+	if !ok || r.State == rooms.StateEnded {
+		return 0, realtime.ErrRoomNotFound
+	}
+	member := r.HostUserID == userID
+	for _, p := range s.activeLocked(roomID) {
+		if p.UserID == userID {
+			member = true
+		}
+	}
+	if !member {
+		// One answer for "no such room" and "not a member", as on the HTTP
+		// path: distinguishing them confirms the id to somebody probing.
+		return 0, realtime.ErrRoomNotFound
+	}
+	return r.CurrentSeq, nil
+}
+
+// EventsSince returns events in (fromSeq, toSeq], oldest first.
+func (s *Store) EventsSince(_ context.Context, roomID string, fromSeq, toSeq int64) ([]realtime.Envelope, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.fail("EventsSince"); err != nil {
+		return nil, err
+	}
+	out := make([]realtime.Envelope, 0, toSeq-fromSeq)
+	for _, e := range s.events[roomID] {
+		if e.Seq > fromSeq && e.Seq <= toSeq {
+			out = append(out, e)
+		}
+	}
+	return out, nil
+}
+
+// OldestRetainedSeq is the lowest seq still held.
+func (s *Store) OldestRetainedSeq(_ context.Context, roomID string) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.fail("OldestRetainedSeq"); err != nil {
+		return 0, err
+	}
+	if len(s.events[roomID]) == 0 {
+		// 1, not 0, so DecideResync does not read an empty log as "everything
+		// has aged out" and force a snapshot on a brand-new room.
+		return 1, nil
+	}
+	return s.events[roomID][0].Seq, nil
+}
+
+// Snapshot renders the room's state.
+func (s *Store) Snapshot(_ context.Context, roomID string) (json.RawMessage, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.fail("Snapshot"); err != nil {
+		return nil, err
+	}
+	r, ok := s.rooms[roomID]
+	if !ok {
+		return nil, rooms.ErrRoomNotFound
+	}
+	type snapParticipant struct {
+		UserID string `json:"userId"`
+		IsHost bool   `json:"isHost"`
+	}
+	active := s.activeLocked(roomID)
+	snap := struct {
+		RoomID       string            `json:"roomId"`
+		State        string            `json:"state"`
+		HostUserID   string            `json:"hostUserId"`
+		CurrentSeq   int64             `json:"currentSeq"`
+		Participants []snapParticipant `json:"participants"`
+	}{
+		RoomID: r.ID, State: string(r.State), HostUserID: r.HostUserID,
+		CurrentSeq: r.CurrentSeq,
+		// Non-nil so it serialises as [] rather than null.
+		Participants: make([]snapParticipant, 0, len(active)),
+	}
+	for _, p := range active {
+		snap.Participants = append(snap.Participants, snapParticipant{UserID: p.UserID, IsHost: p.IsHost})
+	}
+	return json.Marshal(snap)
+}
+
+var _ realtime.RoomReader = (*Store)(nil)
