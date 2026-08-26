@@ -135,8 +135,15 @@ var (
 	ErrNotFound     = NewProblem(http.StatusNotFound, "NOT_FOUND", "Not Found", "No such resource.")
 	ErrConflict     = NewProblem(http.StatusConflict, "CONFLICT", "Conflict", "The request conflicts with the current state.")
 	ErrRateLimited  = NewProblem(http.StatusTooManyRequests, "RATE_LIMITED", "Too Many Requests", "Slow down.")
-	ErrInternal     = NewProblem(http.StatusInternalServerError, "INTERNAL", "Internal Server Error", "Something went wrong on our side.")
-	ErrUnavailable  = NewProblem(http.StatusServiceUnavailable, "UNAVAILABLE", "Service Unavailable", "The service is temporarily unavailable.")
+
+	ErrMethodNotAllowed = NewProblem(http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "Method Not Allowed",
+		"That method is not supported for this resource.")
+	ErrUnsupportedMedia = NewProblem(http.StatusUnsupportedMediaType, "UNSUPPORTED_MEDIA_TYPE", "Unsupported Media Type",
+		"The request body must be application/json.")
+	ErrPayloadTooLarge = NewProblem(http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "Payload Too Large",
+		"The request body is larger than this endpoint accepts.")
+	ErrInternal    = NewProblem(http.StatusInternalServerError, "INTERNAL", "Internal Server Error", "Something went wrong on our side.")
+	ErrUnavailable = NewProblem(http.StatusServiceUnavailable, "UNAVAILABLE", "Service Unavailable", "The service is temporarily unavailable.")
 
 	// FR-57 — Idempotency-Key.
 	ErrIdempotencyKeyRequired = NewProblem(http.StatusBadRequest, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key Required",

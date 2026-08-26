@@ -414,3 +414,69 @@ func (s *Store) DeleteUser(id string) {
 		}
 	}
 }
+
+// ---------------------------------------------------------------------------
+// WS tickets
+// ---------------------------------------------------------------------------
+
+// TicketStore is an in-memory identity.TicketStore.
+//
+// Redeem deletes under the same lock as it reads, which is the whole contract:
+// a ticket must be single-use, and a read-then-delete implementation lets two
+// simultaneous upgrades both succeed with one ticket.
+type TicketStore struct {
+	mu      sync.Mutex
+	tickets map[string]*identity.WSTicket
+
+	// PutErr and RedeemErr force a failure, for the handler's 500 path.
+	PutErr    error
+	RedeemErr error
+}
+
+// NewTicketStore returns an empty TicketStore.
+func NewTicketStore() *TicketStore {
+	return &TicketStore{tickets: map[string]*identity.WSTicket{}}
+}
+
+// Put stores a ticket by its hash.
+func (s *TicketStore) Put(_ context.Context, t *identity.WSTicket) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.PutErr != nil {
+		return s.PutErr
+	}
+	c := *t
+	s.tickets[key(t.Hash)] = &c
+	return nil
+}
+
+// Redeem returns and deletes a ticket atomically.
+func (s *TicketStore) Redeem(_ context.Context, plaintext string, now time.Time) (*identity.WSTicket, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.RedeemErr != nil {
+		return nil, s.RedeemErr
+	}
+	k := key(identity.HashWSTicket(plaintext))
+	t, ok := s.tickets[k]
+	if !ok {
+		return nil, identity.ErrTicketNotFound
+	}
+	// Delete regardless of expiry. An expired ticket left in the map is
+	// unusable but still occupies memory, and deleting only valid ones is how
+	// the store becomes a slow leak.
+	delete(s.tickets, k)
+	if identity.TicketExpired(t, now) {
+		return nil, identity.ErrTicketNotFound
+	}
+	return t, nil
+}
+
+// Len reports how many tickets are held.
+func (s *TicketStore) Len() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.tickets)
+}
+
+var _ identity.TicketStore = (*TicketStore)(nil)
