@@ -50,6 +50,12 @@ dependencies:
   go_router: ^17.5.0
 
 dev_dependencies:
+  # Explicit rather than relying on the transitive pull from
+  # web_socket_channel: the socket tests implement StreamChannelMixin
+  # directly, and a transitive dependency that disappears in a future
+  # web_socket_channel release would break them with a confusing error.
+  stream_channel: ^2.1.4
+
   flutter_test:
     sdk: flutter
 
