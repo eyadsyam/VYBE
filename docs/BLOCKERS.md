@@ -79,6 +79,39 @@ CI runs both of those as assertions against a real Postgres 17 service
 (`.github/workflows/ci.yml`), so the first CI run will either confirm them or
 fail loudly. **Neither has happened yet.**
 
+**What this now also blocks (updated 2026-08-26).** The scope has grown since
+this was written. There are now **36 integration tests** — `TestPG*` across
+identity, rooms, and the idempotency store, plus `TestRedisTicket*` — and they
+are the only cover the SQL and Redis paths get anywhere. They skip locally
+without `VYBE_DB_DSN` / `VYBE_REDIS_ADDR`, which means a local `go test ./...`
+is green while three whole files are untested. Three properties in particular
+exist only inside them and cannot be demonstrated any other way:
+
+- **`UPDATE rooms SET current_seq = current_seq + 1 RETURNING current_seq`
+  actually serialises concurrent writers.** Eight goroutines join one room at
+  once and must produce no gap and no duplicate seq. Whether Postgres's row
+  lock delivers that is a question about Postgres, not about Go, and FR-28 is
+  the one property in the system that cannot be recovered from once broken.
+- **`Reserve`'s CTE is atomic.** Eight concurrent reservations of one
+  idempotency key; exactly one must claim it. A read-then-write has a window
+  where several see nothing and all proceed — the double-charge FR-57 exists
+  to prevent.
+- **Redis `GETDEL` is atomic.** Eight redemptions of one WS ticket; exactly one
+  must succeed, or the ticket is a replayable credential sitting in a URL.
+
+Because a run where all 36 silently skipped would still be *green*, CI now
+asserts they ran and that none skipped. That check is what would catch a DSN
+that quietly stopped reaching them — but it, too, has never run.
+
+**Unblocking is one reboot and two commands:**
+
+```bash
+docker compose up -d db redis
+cd server && go run ./cmd/migrate up
+VYBE_DB_DSN='postgres://vybe:vybe@localhost:5432/vybe?sslmode=disable' \
+VYBE_REDIS_ADDR=localhost:6379 go test ./internal/... -v -run 'TestPG|TestRedisTicket'
+```
+
 **Resolution:**
 1. Reboot Windows.
 2. `wsl --status` — confirm it reports a version. If a distribution is missing,
@@ -115,6 +148,25 @@ convergence is not a meaningful assertion when both clients read the same
 
 The 90-second walkthrough §16.3 asks for needs both screens visible side by
 side with the network throttled. The reconnect moment is the money shot.
+
+**Status update, 2026-08-26.** This has gone from "eventually" to "the only
+thing left". The reconnect path it would demonstrate is now fully built on
+both sides and tested in isolation:
+
+- The server serves `DELTA` and `SNAPSHOT` correctly for all four resync
+  decisions, including the case that is easy to conflate — a *small* gap whose
+  events have aged out of retention cannot be served a delta at any threshold.
+- The Dart client keeps its `lastSeq` across a transport death, mints a fresh
+  ticket per attempt, dedupes the last 500 envelope ids, and **refuses a delta
+  with a hole** rather than applying it and believing itself caught up.
+- The hub drops a slow client rather than blocking the room, which is only
+  safe *because* reconnection is lossless.
+
+Every piece of that is tested. What is untested is the claim the project is
+built on: that two devices, on real radios, with genuinely different clocks,
+converge within ±250ms. No amount of single-machine testing substitutes,
+because the failure mode being guarded against is precisely the one a shared
+`DateTime.now()` hides.
 
 ---
 
