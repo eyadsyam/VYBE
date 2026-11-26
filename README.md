@@ -109,15 +109,20 @@ docker compose --profile app up
 ```bash
 cd app
 flutter pub get
+dart run build_runner build --delete-conflicting-outputs
 flutter gen-l10n
 flutter run
 ```
+
+Generated code (`*.g.dart`, `*.freezed.dart`) is gitignored, so run `build_runner`
+after every fresh clone or model/database change. Without it `flutter analyze`
+reports dozens of missing-member errors (e.g. on `AppDatabase`).
 
 ### Tests
 
 ```bash
 cd server && go test ./... -race -cover
-cd app    && flutter test --coverage
+cd app    && dart run build_runner build --delete-conflicting-outputs && flutter test --coverage
 
 python tools/spec/check_traceability.py specs/001-vertical-slice/spec.md
 dart tools/lint/no_literal_strings.dart app/lib
